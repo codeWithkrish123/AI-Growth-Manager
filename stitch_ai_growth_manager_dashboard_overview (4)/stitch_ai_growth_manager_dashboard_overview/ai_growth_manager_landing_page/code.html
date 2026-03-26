@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Growth Manager Landing Page</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "primary-dark": "#0f4bc4",
+                        "primary-light": "#eef4ff",
+                        "background-light": "#ffffff",
+                        "background-dark": "#101622",
+                        "slate-900": "#0f172a",
+                        "slate-600": "#475569",
+                        "slate-50": "#f8fafc",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "sans": ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "0.75rem",
+                        "xl": "1rem",
+                        "2xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #135bec 0%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-glow {
+            background: radial-gradient(circle at 50% 50%, rgba(19, 91, 236, 0.15), transparent 70%);
+        }
+    </style>
+</head>
+<body class="bg-background-light text-slate-900 overflow-x-hidden antialiased selection:bg-primary/20 selection:text-primary">
+<!-- TopNavBar -->
+<header class="sticky top-0 z-50 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md">
+<div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+<div class="flex items-center gap-2">
+<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
+<span class="material-symbols-outlined text-[20px]">auto_graph</span>
+</div>
+<span class="text-lg font-bold tracking-tight text-slate-900">AI Growth Manager</span>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-sm font-medium text-slate-600 hover:text-primary transition-colors" href="#">Features</a>
+<a class="text-sm font-medium text-slate-600 hover:text-primary transition-colors" href="#">How it Works</a>
+<a class="text-sm font-medium text-slate-600 hover:text-primary transition-colors" href="#">Pricing</a>
+<a class="text-sm font-medium text-slate-600 hover:text-primary transition-colors" href="#">Resources</a>
+</nav>
+<div class="flex items-center gap-4">
+<a class="hidden sm:block text-sm font-medium text-slate-900 hover:text-primary transition-colors" href="#">Log in</a>
+<button class="flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-dark transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                    Start Trial
+                </button>
+</div>
+</div>
+</header>
+<main class="flex flex-col">
+<!-- Hero Section -->
+<section class="relative pt-20 pb-16 lg:pt-32 lg:pb-24 overflow-hidden">
+<div class="absolute inset-0 -z-10 hero-glow"></div>
+<!-- Decorative gradient blobs -->
+<div class="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-primary/5 blur-[100px]"></div>
+<div class="absolute top-40 -left-20 h-[300px] w-[300px] rounded-full bg-purple-500/10 blur-[80px]"></div>
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+<div class="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-sm font-medium text-primary mb-8">
+<span class="flex h-2 w-2 rounded-full bg-primary"></span>
+                    Now with GPT-4 Omni Integration
+                </div>
+<h1 class="mx-auto max-w-4xl text-5xl font-extrabold tracking-tight text-slate-900 sm:text-6xl lg:text-7xl mb-6">
+                    Your <span class="gradient-text">AI Growth Manager</span> for Shopify
+                </h1>
+<p class="mx-auto max-w-2xl text-lg text-slate-600 mb-10 leading-relaxed">
+                    Stop guessing with your ads. Our AI automatically optimizes your revenue, lowers CAC, and scales your winning products 24/7.
+                </p>
+<div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+<button class="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 hover:bg-primary-dark transition-all hover:-translate-y-0.5">
+                        Start Free Trial
+                        <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+<button class="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-8 py-4 text-base font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all">
+<span class="material-symbols-outlined text-[20px] text-primary">play_circle</span>
+                        See How It Works
+                    </button>
+</div>
+<!-- Dashboard Preview -->
+<div class="relative mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
+<div class="aspect-[16/9] w-full overflow-hidden rounded-xl bg-slate-50">
+<img alt="SaaS dashboard showing revenue growth charts and AI insights on a light background" class="h-full w-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPiYiAwiXgPl-A9cgpw0EOyDQF-ASrcrP2SJwuDw6xlVIJTNN08-JCft55V6FHD4CQFTJRFWkaVX-e3buomtJpbWHsWDvnudSh4yKshafEEQB1yiWRaoVHtEDy74zHrAsur5H1kpDVT2ZIYV9QDL9-tUslhfVq8tPmKZGytxE2QeZVpyV7MCo3trfKfs4382mPOrpdPyNRsG6LhiTJwgdVUCMOZirCd7D9yDrouiyLAjBWSykEy8OCyF9UvcpME0pl1A4T-LRljd0Q"/>
+</div>
+<!-- Floating Badge -->
+<div class="absolute -right-6 top-12 hidden lg:flex items-center gap-3 rounded-xl border border-white/40 bg-white/90 p-4 shadow-xl backdrop-blur-md animate-bounce" style="animation-duration: 3s;">
+<div class="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600">
+<span class="material-symbols-outlined">trending_up</span>
+</div>
+<div>
+<p class="text-xs font-medium text-slate-500">Revenue Optimized</p>
+<p class="text-lg font-bold text-slate-900">+$12,450</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Social Proof -->
+<section class="border-y border-slate-100 bg-slate-50/50 py-10">
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+<p class="mb-6 text-sm font-semibold text-slate-500 uppercase tracking-wider">Trusted by 500+ High-Growth Shopify Stores</p>
+<div class="grid grid-cols-2 gap-8 md:grid-cols-5 items-center opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+<!-- Logos placeholders -->
+<div class="flex justify-center"><img alt="Google logo black text" class="h-8 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDo_cU8j7KyIrC5GUZ6AAoSgT3M5o_oIDj-9WkTgUifPqBY_IXR7Vcxcf-RvOfTL-rG7lu7M_JTpOGmdXswf_HnFmd3rxi7ojgVbIOehKNzhrh5Us4-5c6Xg9U8f2xcVlwUyBiKS4kTrHOCKiTmGrvB3xVmouL1a66BXUCRpWJZdWLThQOxx44SQyNbIhRm0uoQy6HFgT-SQD2DwjKFw4ViwOG_xmrWMkO1X338B3kBksOHNlm1g7_gfLlVKFVYgQ2ZyC-z0_wdfaBB"/></div>
+<div class="flex justify-center"><img alt="Shopify logo green shopping bag" class="h-8 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtMea-1p_F-JP6vOzlHmPBiEgKWA18mn29p5sjJ7n6FwdwMBVrx60rERMEnxC__eJSfd-tfcWHAlznyTS56SO2dCCSJErJz8piIUp6SPGFQZ0TVAOFhbmZgYWl65M__I9iSOr1VuhDz_Ph9VR0lulUbwxYCwlfCpK07WCKl0ogQcpcHToLGpEOLtNu4zMIZ7Fu16M41oPuCpjX7Gm28bhs6HHo243EXIBh171b05GW-F0xfgpfgr6tAez2ET8Q6XiK0XCMKhRE1VAh"/></div>
+<div class="flex justify-center"><img alt="Amazon logo black text with arrow" class="h-8 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_7ILJvlnaVDRyZZM1VPGmRpAoeHJTe3X73E5JOiNEcEJnrkVXEN43cSVp8DliBA-zHibrdmoJxN0_F4zZGT3ZiqTAk8XeeCAeTN5pQRTFb8sAGYpjibtno5ef3_8IHIR-9y3dcDevHB6ExI8g3caegtuq8QxpOCAnON6JpEkW0oyMR-HTSkBkogvaKwO9np7kyZMK2w_40qOoXQh2AdnbKbcSIuioRctAGF6hgx5S1sB_XU5yrNUTeI6LaJcUc90UWW15weSI5zan"/></div>
+<div class="flex justify-center"><img alt="Stripe logo purple text" class="h-8 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvxQh1ZLx1ZmDo6kt3QliRT2fLZgVay3DFqe6zQg2aotTxH0RijzDhEyqHDFla5ZMb_Md2PdrFab-fqUJUNSe1sfs4UPWZ2YcotD4MbujZjiwaoHpTWOd0QTGKe9pLpsL_PexGJHp_7qwtTXjDBpL3x2PdusJE3LL6aJMy9NozCoXPJ9k72qZOBGBVJDfkl3UXtQZyZ4uXwDfwJVkcjajEG7AAHT1QkPsaY_Km6-snug-tdIgSfmAF-xZ1FXJxAbBMBEPaizledME9"/></div>
+<div class="flex justify-center"><img alt="IBM logo blue striped text" class="h-8 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGNamVRIrwcFjo_KfkGxh0CvoVyd9OH7qgqfiwnGAlGpFvzVIWoqwCqQw2bW9BTWSMjAH2MrCy7BYAtDg4sr4yNtWemOGXARfTP4TYsTnae3S97AFjE0licQLqogPg-ZF2ierY0d5fT85nvbRVOe9dlvyi9JlPgdmwiOB1uNeV6yV8kTpKB75_Qs74jEu77nENC_bTlKzjUUa0oEmOKTBvoBfw2RSfnKUAR5QsjPUIq1v-vERvgiIwZQItZoTcBrjGU7DW6CNv54ce"/></div>
+</div>
+</div>
+</section>
+<!-- Problem Section -->
+<section class="py-24 bg-white relative">
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+<div class="text-center max-w-3xl mx-auto mb-16">
+<h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl mb-4">The Problem: Manual Growth is Slow</h2>
+<p class="text-lg text-slate-600">Stop wasting budget on manual testing. Most store owners lose 30% of ad spend on inefficient targeting and slow reaction times.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Card 1 -->
+<div class="group relative rounded-2xl border border-slate-100 bg-white p-8 shadow-sm transition-all hover:shadow-md hover:border-primary/20">
+<div class="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600 group-hover:bg-red-100 transition-colors">
+<span class="material-symbols-outlined text-[28px]">credit_card_off</span>
+</div>
+<h3 class="mb-3 text-xl font-bold text-slate-900">Manual Ad Spend</h3>
+<p class="text-slate-600 leading-relaxed">Wasting hours tweaking bids manually instead of letting AI decide instantly based on real-time data.</p>
+</div>
+<!-- Card 2 -->
+<div class="group relative rounded-2xl border border-slate-100 bg-white p-8 shadow-sm transition-all hover:shadow-md hover:border-primary/20">
+<div class="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors">
+<span class="material-symbols-outlined text-[28px]">trending_down</span>
+</div>
+<h3 class="mb-3 text-xl font-bold text-slate-900">Lost Revenue</h3>
+<p class="text-slate-600 leading-relaxed">Missed opportunities on trending products due to slow reaction times to market shifts.</p>
+</div>
+<!-- Card 3 -->
+<div class="group relative rounded-2xl border border-slate-100 bg-white p-8 shadow-sm transition-all hover:shadow-md hover:border-primary/20">
+<div class="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-slate-600 group-hover:bg-slate-100 transition-colors">
+<span class="material-symbols-outlined text-[28px]">dataset</span>
+</div>
+<h3 class="mb-3 text-xl font-bold text-slate-900">Data Overload</h3>
+<p class="text-slate-600 leading-relaxed">Drowning in spreadsheets rather than actionable growth insights that move the needle.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Solution Section -->
+<section class="py-24 bg-slate-50 overflow-hidden">
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+<div class="lg:grid lg:grid-cols-2 lg:gap-16 items-center">
+<div class="mb-12 lg:mb-0">
+<div class="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary mb-6">
+<span class="material-symbols-outlined text-sm">auto_awesome</span>
+                            AI-Powered Solution
+                        </div>
+<h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl mb-6">
+                            Turn Data into Decisions Automatically
+                        </h2>
+<p class="text-lg text-slate-600 mb-8">
+                            Our Optimization Engine connects directly to your store and ad accounts. It analyzes 10,000+ data points per second to make profitable decisions while you sleep.
+                        </p>
+<div class="space-y-6">
+<div class="flex gap-4">
+<div class="flex-shrink-0 mt-1">
+<div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-lg">check</span>
+</div>
+</div>
+<div>
+<h4 class="text-base font-bold text-slate-900">AI Health Score</h4>
+<p class="text-slate-600 mt-1">Get a single metric that tells you exactly how your business is performing and where to improve.</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="flex-shrink-0 mt-1">
+<div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-lg">check</span>
+</div>
+</div>
+<div>
+<h4 class="text-base font-bold text-slate-900">Auto-Scaling</h4>
+<p class="text-slate-600 mt-1">Automatically increase budget on winning campaigns and kill losers instantly.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="relative">
+<!-- Abstract UI representation of AI Analysis -->
+<div class="relative rounded-2xl bg-white p-6 shadow-xl border border-slate-100 z-10">
+<div class="flex items-center justify-between mb-8 border-b border-slate-100 pb-4">
+<div>
+<p class="text-sm font-medium text-slate-500">Store Health</p>
+<h3 class="text-2xl font-bold text-slate-900">94/100</h3>
+</div>
+<div class="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
+<span class="material-symbols-outlined">trending_up</span>
+</div>
+</div>
+<div class="space-y-4">
+<div class="rounded-xl bg-slate-50 p-4 border border-slate-100">
+<div class="flex justify-between items-center mb-2">
+<span class="text-sm font-medium text-slate-700">Ad Spend Efficiency</span>
+<span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">+12%</span>
+</div>
+<div class="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[85%] rounded-full"></div>
+</div>
+</div>
+<div class="rounded-xl bg-slate-50 p-4 border border-slate-100">
+<div class="flex justify-between items-center mb-2">
+<span class="text-sm font-medium text-slate-700">Conversion Rate</span>
+<span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">+4.2%</span>
+</div>
+<div class="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+<div class="h-full bg-purple-500 w-[65%] rounded-full"></div>
+</div>
+</div>
+<div class="rounded-xl bg-slate-50 p-4 border border-slate-100">
+<div class="flex justify-between items-center mb-2">
+<span class="text-sm font-medium text-slate-700">Customer LTV</span>
+<span class="text-xs font-bold text-slate-600 bg-slate-200 px-2 py-0.5 rounded-full">Stable</span>
+</div>
+<div class="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+<div class="h-full bg-slate-400 w-[92%] rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Background decorative elements -->
+<div class="absolute -top-10 -right-10 h-72 w-72 rounded-full bg-purple-200 opacity-30 blur-3xl"></div>
+<div class="absolute -bottom-10 -left-10 h-72 w-72 rounded-full bg-blue-200 opacity-30 blur-3xl"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- How It Works -->
+<section class="py-24 bg-white">
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+<div class="text-center mb-16">
+<h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">How It Works</h2>
+<p class="mt-4 text-lg text-slate-600">Get started in minutes, not days.</p>
+</div>
+<div class="relative">
+<!-- Connecting line for desktop -->
+<div class="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-slate-200 via-primary/30 to-slate-200"></div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+<!-- Step 1 -->
+<div class="relative flex flex-col items-center text-center">
+<div class="z-10 flex h-24 w-24 items-center justify-center rounded-2xl bg-white border border-slate-100 shadow-lg mb-6 text-primary">
+<span class="material-symbols-outlined text-4xl">link</span>
+</div>
+<h3 class="text-xl font-bold text-slate-900 mb-2">1. Connect</h3>
+<p class="text-slate-600">Securely link your Shopify store and ad accounts with one click.</p>
+</div>
+<!-- Step 2 -->
+<div class="relative flex flex-col items-center text-center">
+<div class="z-10 flex h-24 w-24 items-center justify-center rounded-2xl bg-white border border-slate-100 shadow-lg mb-6 text-primary">
+<span class="material-symbols-outlined text-4xl">analytics</span>
+</div>
+<h3 class="text-xl font-bold text-slate-900 mb-2">2. Analyze</h3>
+<p class="text-slate-600">Our AI scans your historical data to identify winning patterns.</p>
+</div>
+<!-- Step 3 -->
+<div class="relative flex flex-col items-center text-center">
+<div class="z-10 flex h-24 w-24 items-center justify-center rounded-2xl bg-white border border-slate-100 shadow-lg mb-6 text-primary">
+<span class="material-symbols-outlined text-4xl">rocket_launch</span>
+</div>
+<h3 class="text-xl font-bold text-slate-900 mb-2">3. Grow</h3>
+<p class="text-slate-600">Watch as the AI optimizes your campaigns and scales revenue.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Testimonials -->
+<section class="py-24 bg-slate-50">
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+<h2 class="text-3xl font-bold tracking-tight text-slate-900 text-center sm:text-4xl mb-16">
+                    What Founders Are Saying
+                </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Review 1 -->
+<div class="flex flex-col rounded-2xl bg-white p-8 shadow-sm border border-slate-100">
+<div class="flex items-center gap-1 text-yellow-400 mb-4">
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+</div>
+<p class="text-slate-700 mb-6 flex-grow">"This tool paid for itself in the first 4 hours. The AI caught a losing ad set that I had missed for days."</p>
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-slate-200 overflow-hidden">
+<img alt="Portrait of Sarah Jenkins" class="h-full w-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtugU5VHPnAoZP9pZFVuXHKa2kheCfDToJvByQFQGLjsdPHy-tT3Pxau3B2bM8pvAkBkiQPcKWj8oVDC9oajXGLOmSamvBoh-qjOtb0JrnBF0xF9KHngq_oOTBfMo_2Qw8q-2CnqZj3qcmE-sdVUpsLaIqXlJUXF7VhUlxC92veD34tyLAnm4TDzdjmW-grvBLZt5ls1CcHISwzctdwAb_saXF_sq4DUGNLMdVtuJlu89yrH_oGpn7F2AoNpkrQ6r85h0GP3AeF-HL"/>
+</div>
+<div>
+<p class="text-sm font-bold text-slate-900">Sarah Jenkins</p>
+<p class="text-xs text-slate-500">Founder, GlowBeauty</p>
+</div>
+</div>
+</div>
+<!-- Review 2 -->
+<div class="flex flex-col rounded-2xl bg-white p-8 shadow-sm border border-slate-100">
+<div class="flex items-center gap-1 text-yellow-400 mb-4">
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+</div>
+<p class="text-slate-700 mb-6 flex-grow">"Finally, I can sleep without worrying about my ad spend. The automated rules are a game changer for scaling."</p>
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-slate-200 overflow-hidden">
+<img alt="Portrait of Mark Davis" class="h-full w-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWnYd8Eg5Gt8Zl-dvgEdv0P1L-PNihh4sxHK38El0zFLa7RlDCFxor-0tzRydObkObpv_8qbJONVWh236SlFmEcW1UszJKzxI1RIiZ6sJRVrAYhbvpD0cBFQBx9HaVvkXrTOSIRbhm_7rlDZrV3MRq4lIVN3twGxtucrpfcME7tvzxLYp1OTinfEouhvlnNBYe9AfFNiTnCS2rRBhXG_qKl9PWFLJeX61mOXBCH_3dQadfiC6NpbqQp8-khxmzDZIBwhC_42pZTJp-"/>
+</div>
+<div>
+<p class="text-sm font-bold text-slate-900">Mark Davis</p>
+<p class="text-xs text-slate-500">CEO, TechGear</p>
+</div>
+</div>
+</div>
+<!-- Review 3 -->
+<div class="flex flex-col rounded-2xl bg-white p-8 shadow-sm border border-slate-100">
+<div class="flex items-center gap-1 text-yellow-400 mb-4">
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+<span class="material-symbols-outlined fill-current text-sm">star</span>
+</div>
+<p class="text-slate-700 mb-6 flex-grow">"The data visualization is stunning. It simplifies complex metrics into something actionable instantly."</p>
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-slate-200 overflow-hidden">
+<img alt="Portrait of Elena Rodriguez" class="h-full w-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCNWPMaGTwe-XnEeVudEXcv63Vmqu08I9yb5f3O7iHdhGhpjT8SL5sEQ8TUeDDXiDELmGpFuDoG6EsGvaaZ0f4tF4y-kDdfxUPhQ-XUAXu_VdKef1_cA177dvhNhP0CI2E5xpJel5g3r6vpAwg4Yt_QK5DTuH2OC5dtAalnrDlV7h5mYvNa-uuqvcWqARcKjPap5VpZiSp9q2O0dfD8Uke1vA91t8o3mbkcoOCZKuJuHeIXj-RoMXuyzPz9aJDoHdtUW69byRpnILne"/>
+</div>
+<div>
+<p class="text-sm font-bold text-slate-900">Elena Rodriguez</p>
+<p class="text-xs text-slate-500">Marketing Director, PureLife</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Pricing -->
+<section class="py-24 bg-white relative overflow-hidden">
+<div class="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40"></div>
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+<div class="text-center mb-16">
+<h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Simple Pricing for Every Stage</h2>
+<p class="mt-4 text-lg text-slate-600">Start free, upgrade as you grow.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+<!-- Starter Tier -->
+<div class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+<h3 class="text-lg font-semibold text-slate-900">Starter</h3>
+<div class="mt-4 flex items-baseline">
+<span class="text-4xl font-bold tracking-tight text-slate-900">$49</span>
+<span class="ml-1 text-sm font-semibold text-slate-500">/month</span>
+</div>
+<p class="mt-4 text-sm text-slate-600">Perfect for new stores just getting started.</p>
+<ul class="mt-6 space-y-4">
+<li class="flex items-start">
+<span class="material-symbols-outlined text-green-500 text-lg mr-2">check</span>
+<span class="text-sm text-slate-600">Up to $5k ad spend</span>
+</li>
+<li class="flex items-start">
+<span class="material-symbols-outlined text-green-500 text-lg mr-2">check</span>
+<span class="text-sm text-slate-600">Basic AI Optimization</span>
+</li>
+<li class="flex items-start">
+<span class="material-symbols-outlined text-green-500 text-lg mr-2">check</span>
+<span class="text-sm text-slate-600">Email Support</span>
+</li>
+</ul>
+<button class="mt-8 block w-full rounded-xl bg-slate-50 px-4 py-3 text-center text-sm font-semibold text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors">Get Started</button>
+</div>
+<!-- Growth Tier (Highlighted) -->
+<div class="relative rounded-2xl border-2 border-primary bg-white p-8 shadow-xl scale-105 z-10">
+<div class="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                            Most Popular
+                        </div>
+<h3 class="text-lg font-semibold text-primary">Growth</h3>
+<div class="mt-4 flex items-baseline">
+<span class="text-4xl font-bold tracking-tight text-slate-900">$99</span>
+<span class="ml-1 text-sm font-semibold text-slate-500">/month</span>
+</div>
+<p class="mt-4 text-sm text-slate-600">For scaling brands that need full power.</p>
+<ul class="mt-6 space-y-4">
+<li class="flex items-start">
+<span class="material-symbols-outlined text-primary text-lg mr-2">check</span>
+<span class="text-sm text-slate-900 font-medium">Up to $25k ad spend</span>
+</li>
+<li class="flex items-start">
+<span class="material-symbols-outlined text-primary text-lg mr-2">check</span>
+<span class="text-sm text-slate-900 font-medium">Advanced AI Rules</span>
+</li>
+<li class="flex items-start">
+<span class="material-symbols-outlined text-primary text-lg mr-2">check</span>
+<span class="text-sm text-slate-900 font-medium">Hourly Optimization</span>
+</li>
+<li class="flex items-start">
+<span class="material-symbols-outlined text-primary text-lg mr-2">check</span>
+<span class="text-sm text-slate-900 font-medium">Priority Chat Support</span>
+</li>
+</ul>
+<button class="mt-8 block w-full rounded-xl bg-primary px-4 py-3 text-center text-sm font-semibold text-white hover:bg-primary-dark shadow-lg shadow-primary/25 transition-all">Start Free Trial</button>
+</div>
+<!-- Pro Tier -->
+<div class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+<h3 class="text-lg font-semibold text-slate-900">Pro</h3>
+<div class="mt-4 flex items-baseline">
+<span class="text-4xl font-bold tracking-tight text-slate-900">$299</span>
+<span class="ml-1 text-sm font-semibold text-slate-500">/month</span>
+</div>
+<p class="mt-4 text-sm text-slate-600">Enterprise grade for high volume stores.</p>
+<ul class="mt-6 space-y-4">
+<li class="flex items-start">
+<span class="material-symbols-outlined text-green-500 text-lg mr-2">check</span>
+<span class="text-sm text-slate-600">Unlimited ad spend</span>
+</li>
+<li class="flex items-start">
+<span class="material-symbols-outlined text-green-500 text-lg mr-2">check</span>
+<span class="text-sm text-slate-600">Custom AI Models</span>
+</li>
+<li class="flex items-start">
+<span class="material-symbols-outlined text-green-500 text-lg mr-2">check</span>
+<span class="text-sm text-slate-600">Dedicated Account Manager</span>
+</li>
+</ul>
+<button class="mt-8 block w-full rounded-xl bg-slate-50 px-4 py-3 text-center text-sm font-semibold text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors">Contact Sales</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Final CTA -->
+<section class="py-24 bg-slate-900 text-white relative overflow-hidden">
+<div class="absolute inset-0 bg-[linear-gradient(to_right,#135bec_1px,transparent_1px),linear-gradient(to_bottom,#135bec_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-10"></div>
+<div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center relative z-10">
+<h2 class="text-3xl font-bold tracking-tight sm:text-5xl mb-6">Ready to scale your store?</h2>
+<p class="text-lg text-slate-300 mb-10 max-w-2xl mx-auto">Join the new wave of e-commerce growth. No credit card required for the trial.</p>
+<div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+<button class="w-full sm:w-auto rounded-xl bg-primary px-8 py-4 text-base font-bold text-white shadow-lg hover:bg-primary-dark hover:scale-105 transition-all">
+                        Get Started for Free
+                    </button>
+<button class="w-full sm:w-auto rounded-xl border border-slate-700 bg-transparent px-8 py-4 text-base font-bold text-white hover:bg-white/10 transition-all">
+                        Book a Demo
+                    </button>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-white border-t border-slate-200 pt-16 pb-8">
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-12">
+<div class="col-span-2 lg:col-span-2">
+<div class="flex items-center gap-2 mb-4">
+<div class="flex h-6 w-6 items-center justify-center rounded bg-primary text-white">
+<span class="material-symbols-outlined text-[16px]">auto_graph</span>
+</div>
+<span class="text-lg font-bold text-slate-900">AI Growth Manager</span>
+</div>
+<p class="text-sm text-slate-500 max-w-xs mb-6">
+                        The #1 AI-powered growth tool for Shopify merchants. Scale your ads, optimize your funnel, and grow your revenue automatically.
+                    </p>
+<div class="flex gap-4">
+<a class="text-slate-400 hover:text-primary transition-colors" href="#">
+<svg aria-hidden="true" class="h-6 w-6" fill="currentColor" viewbox="0 0 24 24"><path clip-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" fill-rule="evenodd"></path></svg>
+</a>
+<a class="text-slate-400 hover:text-primary transition-colors" href="#">
+<svg aria-hidden="true" class="h-6 w-6" fill="currentColor" viewbox="0 0 24 24"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84"></path></svg>
+</a>
+<a class="text-slate-400 hover:text-primary transition-colors" href="#">
+<svg aria-hidden="true" class="h-6 w-6" fill="currentColor" viewbox="0 0 24 24"><path clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" fill-rule="evenodd"></path></svg>
+</a>
+</div>
+</div>
+<div>
+<h3 class="text-sm font-semibold text-slate-900 mb-4">Product</h3>
+<ul class="space-y-3">
+<li><a class="text-sm text-slate-600 hover:text-primary" href="#">Features</a></li>
+<li><a class="text-sm text-slate-600 hover:text-primary" href="#">Integrations</a></li>
+<li><a class="text-sm text-slate-600 hover:text-primary" href="#">Pricing</a></li>
+<li><a class="text-sm text-slate-600 hover:text-primary" href="#">Roadmap</a></li>
+</ul>
+</div>
+<div>
+<h3 class="text-sm font-semibold text-slate-900 mb-4">Resources</h3>
+<ul class="space-y-3">
+<li><a class="text-sm text-slate-600 hover:text-primary" href="#">Blog</a></li>
+<li><a class="text-sm text-slate-600 hover:text-primary" href="#">Documentation</a></li>
+<li><a class="text-sm text-slate-600 hover:text-primary" href="#">Community</a></li>
+<li><a class="text-sm text-slate-600 hover:text-primary" href="#">Help Center</a></li>
+</ul>
+</div>
+<div>
+<h3 class="text-sm font-semibold text-slate-900 mb-4">Company</h3>
+<ul class="space-y-3">
+<li><a class="text-sm text-slate-600 hover:text-primary" href="#">About</a></li>
+<li><a class="text-sm text-slate-600 hover:text-primary" href="#">Careers</a></li>
+<li><a class="text-sm text-slate-600 hover:text-primary" href="#">Legal</a></li>
+<li><a class="text-sm text-slate-600 hover:text-primary" href="#">Privacy</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+<p class="text-sm text-slate-400">© 2024 AI Growth Manager. All rights reserved.</p>
+<div class="flex gap-6">
+<a class="text-sm text-slate-400 hover:text-slate-600" href="#">Privacy Policy</a>
+<a class="text-sm text-slate-400 hover:text-slate-600" href="#">Terms of Service</a>
+</div>
+</div>
+</div>
+</footer>
+</body></html>
