@@ -1,0 +1,15 @@
+# AI Growth Manager - Robots.txt
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /dark-dashboard
+Disallow: /onboarding
+Disallow: /sync
+Disallow: /settings
+Disallow: /products
+Disallow: /ai-actions
+Disallow: /emails
+Disallow: /revenue
+Disallow: /health
+
+Sitemap: https://ai-growth-manager.vercel.app/sitemap.xml

@@ -56,7 +56,7 @@ export default function LandingPage() {
                         </div>
                         <span className="text-lg font-bold tracking-tight text-slate-900">AI Growth Manager</span>
                     </div>
-                    <nav className="hidden md:flex items-center gap-8">
+                    <nav className="hidden md:flex items-center gap-8" aria-label="Main navigation">
                         <a className="text-sm font-medium text-slate-600 hover:text-primary transition-colors" href="#features">Features</a>
                         <a className="text-sm font-medium text-slate-600 hover:text-primary transition-colors" href="#how-it-works">How it Works</a>
                         <Link className="text-sm font-medium text-slate-600 hover:text-primary transition-colors" to="/pricing">Pricing</Link>

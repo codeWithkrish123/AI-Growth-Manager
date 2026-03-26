@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Mail, X } from 'lucide-react'
@@ -8,6 +8,11 @@ export default function SignInPage() {
     const navigate = useNavigate()
     const [email, setEmail] = useState('')
     const [loading, setLoading] = useState(false)
+
+    useEffect(() => {
+        document.title = 'Sign In – AI Growth Manager | Start Your Free Trial'
+        document.querySelector('meta[name="description"]')?.setAttribute('content', 'Sign in to AI Growth Manager or start your free 14-day trial. Connect your Shopify store and let AI optimize your growth.')
+    }, [])
 
     const handleSubmit = async (e) => {
         e.preventDefault()

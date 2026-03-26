@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const fadeUp = {
     hidden: { opacity: 0, y: 24 },
@@ -10,6 +10,11 @@ const fadeUp = {
 export default function PricingPage() {
     const [billing, setBilling] = useState('monthly')
     const [selectedPlan, setSelectedPlan] = useState('growth')
+
+    useEffect(() => {
+        document.title = 'Pricing – AI Growth Manager | Plans from $29/mo'
+        document.querySelector('meta[name="description"]')?.setAttribute('content', 'Simple, transparent pricing for AI Growth Manager. Choose from Starter ($29/mo), Growth ($79/mo), or Pro ($199/mo) plans to scale your Shopify store.')
+    }, [])
 
     const prices = {
         starter: billing === 'monthly' ? '$29' : '$23',

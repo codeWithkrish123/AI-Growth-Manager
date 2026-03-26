@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -88,6 +88,11 @@ export default function ResourcesPage() {
     const [searchQuery, setSearchQuery] = useState('')
     const [email, setEmail] = useState('')
     const [subscribed, setSubscribed] = useState(false)
+
+    useEffect(() => {
+        document.title = 'Resources – AI Growth Manager | Guides, Case Studies & Templates'
+        document.querySelector('meta[name="description"]')?.setAttribute('content', 'Free guides, case studies, templates, and videos to help you scale your Shopify store with AI. Learn from expert growth strategies.')
+    }, [])
 
     const filtered = (active === 'All' ? RESOURCES : RESOURCES.filter(r => r.category === active))
         .filter(r =>

@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useScroll, useTransform, useInView } from 'framer-motion'
 
@@ -83,6 +83,11 @@ export default function AboutPage() {
     const containerRef = useRef(null)
     const { scrollYProgress } = useScroll({ target: containerRef, offset: ['start start', 'end end'] })
     const progressBarWidth = useTransform(scrollYProgress, [0, 1], ['0%', '100%'])
+
+    useEffect(() => {
+        document.title = 'About Us – AI Growth Manager | Our Story & Team'
+        document.querySelector('meta[name="description"]')?.setAttribute('content', 'Learn about AI Growth Manager — the team, mission, and story behind the #1 AI-powered growth tool for Shopify merchants. Founded by ex-Meta and ex-Google engineers.')
+    }, [])
 
     return (
         <div ref={containerRef} className="bg-white text-slate-900 overflow-x-hidden">
