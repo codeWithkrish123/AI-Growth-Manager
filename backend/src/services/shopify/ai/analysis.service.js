@@ -1,6 +1,7 @@
 import { anthropic }         from '../../../config/ai.js';
 import { config }            from '../../../config/index.js';
-import { AiAnalysis, AiCallLog } from '../../../models/index.js';
+import { AiAnalysisModel } from '../../../models/AiAnalysis.model.js';
+import { AiCallLogModel } from '../../../models/secondary.models.js';
 import { buildAnalysisPrompt }   from './prompt.builder.js';
 import { hashMetrics }           from '../../../utils/hash.js';
 import { AiError }               from '../../../utils/error.js';
@@ -18,7 +19,7 @@ export async function runAiAnalysis(snapshot, shopInfo) {
   const metricsHash = hashMetrics(snapshot.metrics);
 
   // ── Cache check ─────────────────────────────────────────────────────────────
-  const cached = await AiAnalysis.findOne({
+  const cached = await AiAnalysisModel.findOne({
     merchantId: snapshot.merchantId,
     metricsHash,
     status:     'completed',
@@ -66,9 +67,9 @@ export async function runAiAnalysis(snapshot, shopInfo) {
     }
 
     // ── Save analysis ───────────────────────────────────────────────────────
-    const analysis = await AiAnalysis.create({
+    const analysis = await AiAnalysisModel.create({
       merchantId:       snapshot.merchantId,
-      snapshotId:       snapshot._id,
+      snapshotId:       snapshot.id,
       shopDomain:       snapshot.shopDomain,
       healthScore:      snapshot.healthScore,
       summary:          parsed.summary,
@@ -82,7 +83,7 @@ export async function runAiAnalysis(snapshot, shopInfo) {
     });
 
     // ── Log LLM cost for monitoring ─────────────────────────────────────────
-    await AiCallLog.create({
+    await AiCallLogModel.create({
       merchantId:       snapshot.merchantId,
       shopDomain:       snapshot.shopDomain,
       callType:         'analysis',
@@ -90,8 +91,8 @@ export async function runAiAnalysis(snapshot, shopInfo) {
       promptTokens,
       completionTokens,
       totalTokens:      promptTokens + completionTokens,
-      // Approximate cost: claude-sonnet is $3/$15 per 1M tokens in/out
-      costUsd:          (promptTokens * 0.000003) + (completionTokens * 0.000015),
+      // OpenAI gpt-4o-mini cost: $0.15/$0.60 per 1M tokens in/out
+      costUsd:          (promptTokens * 0.00000015) + (completionTokens * 0.0000006),
       latencyMs,
       success:          true,
     });
@@ -102,7 +103,7 @@ export async function runAiAnalysis(snapshot, shopInfo) {
 
   } catch (err) {
     // Log failed call too (for debugging)
-    await AiCallLog.create({
+    await AiCallLogModel.create({
       merchantId:  snapshot.merchantId,
       shopDomain:  snapshot.shopDomain,
       callType:    'analysis',

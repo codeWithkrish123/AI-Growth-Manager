@@ -17,9 +17,8 @@ export const syncQueue = new Queue('store-sync', {
  * BullMQ won't add a duplicate.
  */
 export async function queueSync(shopDomain, syncJobId) {
-  return syncQueue.add(
-    'sync_store',
-    { shopDomain, syncJobId: String(syncJobId) },
-    { jobId: `sync:${shopDomain}` }
-  );
+  const job = await syncQueue.add('sync-store', { shopDomain, syncJobId }, {
+    jobId: shopDomain, // Deduplicate by shop domain
+  });
+  return job;
 }

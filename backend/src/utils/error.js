@@ -37,3 +37,9 @@ export class AiError extends AppError {
     super(msg, 502, 'AI_ERROR');
   }
 }
+
+export class DatabaseError extends AppError {
+  constructor(msg = 'Database error', code = 'DATABASE_ERROR') {
+    super(msg, 500, code);
+  }
+}

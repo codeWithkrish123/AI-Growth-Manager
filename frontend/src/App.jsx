@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import DashboardOverview from './pages/DashboardOverview'
+import DashboardPage from './pages/DashboardPage'
 import HealthIntelligence from './pages/HealthIntelligence'
 import PricingPage from './pages/PricingPage'
 import SignInPage from './pages/SignInPage'
@@ -21,6 +22,7 @@ function App() {
             <Routes>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/dashboard" element={<DashboardOverview />} />
+                <Route path="/dashboard/:shop" element={<DashboardPage />} />
                 <Route path="/health" element={<HealthIntelligence />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/signin" element={<SignInPage />} />

@@ -1,5 +1,6 @@
-import 'dotenv/config';
+import '../loadEnv.js';
 import { shopifyApi } from '@shopify/shopify-api';
+import '@shopify/shopify-api/adapters/node';
 
 function required(key) {
   const val = process.env[key];

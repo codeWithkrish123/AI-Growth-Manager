@@ -51,8 +51,8 @@ export default function LandingPage() {
             <header className="sticky top-0 z-50 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
-                            <span className="material-symbols-outlined fill text-[20px]">auto_graph</span>
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white" aria-label="AI Growth Manager Logo Icon">
+                            <span className="material-symbols-outlined fill text-[20px]" title="Auto Graph Analytics Icon">auto_graph</span>
                         </div>
                         <span className="text-lg font-bold tracking-tight text-slate-900">AI Growth Manager</span>
                     </div>
@@ -135,7 +135,8 @@ export default function LandingPage() {
                                             </div>
                                             <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 h-32 relative overflow-hidden">
                                                 <p className="text-xs font-semibold text-slate-500 mb-2">Revenue Overview</p>
-                                                <svg className="w-full h-20" viewBox="0 0 400 80" preserveAspectRatio="none">
+                                                <svg className="w-full h-20" viewBox="0 0 400 80" preserveAspectRatio="none" role="img" aria-label="Revenue growth chart showing 14x ROI">
+                                                    <title>Revenue Growth Chart</title>
                                                     <defs>
                                                         <linearGradient id="revGrad" x1="0" x2="0" y1="0" y2="1">
                                                             <stop offset="0%" stopColor="#135bec" stopOpacity="0.15" />
@@ -247,8 +248,8 @@ export default function LandingPage() {
                                                 <p className="text-sm font-medium text-slate-500">Store Health</p>
                                                 <h3 className="text-2xl font-bold text-slate-900">94/100</h3>
                                             </div>
-                                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
-                                                <span className="material-symbols-outlined">trending_up</span>
+                                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600" aria-label="Growth Trend Up">
+                                                <span className="material-symbols-outlined" title="Trending Up Icon">trending_up</span>
                                             </div>
                                         </div>
                                         <div className="space-y-4">

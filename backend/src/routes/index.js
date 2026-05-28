@@ -1,20 +1,45 @@
 import { Router } from 'express';
 import { authMiddleware, shopifyHmac, rateLimiter } from '../middlewares/index.js';
-import { authBegin, authCallback }  from '../controllers/auth.controller.js';
+import { authBegin, authCallback, getOAuthUrl }  from '../controllers/auth.controller.js';
+import {
+  initiateShopifyAuth,
+  handleShopifyCallback,
+  getAuthStatus,
+  disconnectShopify,
+  handleEmbeddedAppLaunch
+} from '../controllers/shopify.controller.js';
 import {
   getDashboard,
+  triggerAnalysis,
+} from '../controllers/dashboard.controller.js';
+import {
   triggerSync, getSyncStatus,
-  triggerAnalysis, getLatestAnalysis,
+  getLatestAnalysis,
   applyFix, getFixStatus, listFixes,
   handleWebhook,
   getHealthHistory,
 } from '../controllers/index.js';
+import googleRoutes from './google.routes.js';
+import dashboardRoutes from './dashboard.routes.js';
 
 const router = Router();
 
-// ─── Auth (public — no authMiddleware) ───────────────────────────────────────
+// ─── Shopify Embedded App Launch (public) - handles app opening from Shopify Admin
+router.get('/', handleEmbeddedAppLaunch);
+
+// ─── Auth (public — no authMiddleware) ───────────────────────────────
 router.get('/auth/shopify',   authBegin);
 router.get('/auth/callback',  authCallback);
+router.post('/auth/oauth-url', getOAuthUrl);
+
+// ─── Shopify OAuth (public) - using official SDK routes
+router.post('/auth/shopify/initiate', initiateShopifyAuth);
+router.get('/auth/shopify/callback', handleShopifyCallback);
+router.get('/auth/status', getAuthStatus);
+router.post('/auth/disconnect', disconnectShopify);
+
+// ─── Google OAuth (public) ───────────────────────────────────────
+router.use('/google', googleRoutes);
 
 // ─── Shopify Webhooks (public — HMAC validated) ───────────────────────────────
 router.post('/webhooks/shopify', shopifyHmac, handleWebhook);

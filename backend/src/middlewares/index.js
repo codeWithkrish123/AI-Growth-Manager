@@ -1,7 +1,7 @@
 import crypto               from 'crypto';
 import pinoHttp             from 'pino-http';
 import rateLimit            from 'express-rate-limit';
-import { Merchant }         from '../models/index.js';
+import { MerchantModel }    from '../models/index.js';
 import { logger }           from '../utils/logger.js';
 import { UnauthorizedError } from '../utils/error.js';
 import { config }           from '../config/index.js';
@@ -20,9 +20,9 @@ export async function authMiddleware(req, res, next) {
       throw new UnauthorizedError('Missing shop domain');
     }
 
-    const merchant = await Merchant.findOne({ shopDomain, isActive: true });
+    const merchant = await MerchantModel.findOne({ shopDomain });
 
-    if (!merchant) {
+    if (!merchant || !merchant.isActive) {
       throw new UnauthorizedError('Merchant not found or not installed');
     }
 

@@ -1,13 +1,47 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ShoppingBag, ShieldCheck, Lock, ArrowRight, Zap, Globe, Sparkles } from 'lucide-react'
 
 export default function OnboardingPage() {
     const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
     const [storeUrl, setStoreUrl] = useState('')
     const [isFocused, setIsFocused] = useState(false)
     const [isConnecting, setIsConnecting] = useState(false)
+    const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+    // Handle token from URL (after Google OAuth)
+    useEffect(() => {
+        const token = searchParams.get('token')
+        const merchant = searchParams.get('merchant')
+        
+        if (token) {
+            // Save token to localStorage
+            localStorage.setItem('token', token)
+            localStorage.setItem('currentShop', merchant || '')
+            setIsAuthenticated(true)
+            
+            // Clear URL params
+            window.history.replaceState({}, document.title, '/onboarding')
+            
+            console.log('Authenticated via Google OAuth')
+        } else {
+            // Check if already logged in
+            const existingToken = localStorage.getItem('token')
+            const existingShop = localStorage.getItem('currentShop')
+            if (existingToken) {
+                setIsAuthenticated(true)
+                if (existingShop) {
+                    // Already has store connected, redirect to dashboard
+                    navigate(`/dashboard/${existingShop}`)
+                }
+            } else {
+                // Not logged in, redirect to signin
+                navigate('/signin')
+            }
+        }
+    }, [searchParams, navigate])
 
     const handleConnect = async (e) => {
         e.preventDefault()
@@ -26,7 +60,7 @@ export default function OnboardingPage() {
         }
         try {
             // Call your backend to get OAuth URL
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/oauth-url`, {
+            const response = await fetch('http://localhost:3001/auth/shopify/initiate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ shop: formattedStore })
@@ -34,8 +68,24 @@ export default function OnboardingPage() {
             
             const data = await response.json()
             
-            // Redirect to Shopify OAuth
-         window.location.href = data.oauthUrl
+            // Handle response
+            if (data.success && data.data.authUrl) {
+                // Redirect to Shopify OAuth
+                window.location.href = data.data.authUrl
+            } else if (data.success && data.data.redirectTo) {
+                // Store already connected, save and redirect to dashboard
+                localStorage.setItem('currentShop', formattedStore)
+                window.location.href = data.data.redirectTo
+            } else if (data.success && data.data.shop) {
+                // Store connected successfully
+                localStorage.setItem('currentShop', data.data.shop)
+                navigate(`/dashboard/${data.data.shop}`)
+            } else {
+                console.error('Failed to get Shopify auth URL:', data)
+                const errorMessage = data.error?.message || data.error || 'Failed to connect store. Please try again.'
+                alert(errorMessage)
+                setIsConnecting(false)
+            }
 
         } catch (error) {
             console.error('Connection failed:', error)

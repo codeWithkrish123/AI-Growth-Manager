@@ -2,12 +2,11 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// Fix __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 🔥 FORCE load env BEFORE anything else
+// Load .env from backend root
 dotenv.config({
   path: path.resolve(__dirname, '../.env'),
 });
-
-console.log('ENV LOADED:', process.env.SHOPIFY_SCOPES);

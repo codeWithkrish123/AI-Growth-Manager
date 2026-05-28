@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, ArrowRight } from 'lucide-react'
-// import { dashboardAPI, shopifyAPI } from '../services'
+import { dashboardAPI, shopifyAPI } from '../services/api.js'
 
 const navItems = [
     { icon: 'dashboard', label: 'Overview', to: '/dashboard' },
@@ -15,21 +15,28 @@ const navItems = [
 
 export default function DashboardOverview() {
     const location = useLocation()
+    const navigate = useNavigate()
     const isOptimized = new URLSearchParams(location.search).get('optimized') === 'true'
     const [healthScore, setHealthScore] = useState(0)
     const [showBanner, setShowBanner] = useState(false)
     const [loading, setLoading] = useState(true)
-    const [shop, setShop] = useState(localStorage.getItem('currentShop') || 'demo-shop.myshopify.com')
+    const [shop, setShop] = useState(localStorage.getItem('currentShop'))
     const [dashboardData, setDashboardData] = useState(null)
     const [stats, setStats] = useState({
-        conversion: '2.4%',
-        aov: '$85.00',
-        cart: '64%'
+        conversion: '0%',
+        aov: '$0.00',
+        cart: '0%'
     })
+    const [aiActions, setAiActions] = useState([])
+    const [revenueData, setRevenueData] = useState(null)
 
     useEffect(() => {
+        if (!shop) {
+            navigate('/signin')
+            return
+        }
         fetchDashboardData()
-    }, [shop])
+    }, [shop, navigate])
 
     const fetchDashboardData = async () => {
         try {
@@ -37,20 +44,42 @@ export default function DashboardOverview() {
             const response = await dashboardAPI.getDashboardData(shop)
             setDashboardData(response.data)
             
-            // Update stats with real data
-            if (response.data) {
+            // Update stats with real data from snapshot
+            if (response.data?.snapshot) {
+                const { metrics } = response.data.snapshot
                 setStats({
-                    conversion: `${response.data.conversionRate || '2.4'}%`,
-                    aov: `$${response.data.averageOrderValue || '85.00'}`,
-                    cart: `${response.data.cartAbandonmentRate || '64'}%`
+                    conversion: `${(metrics.conversionRate * 100 || 0).toFixed(1)}%`,
+                    aov: `$${(metrics.avgOrderValue || 0).toFixed(2)}`,
+                    cart: `${(metrics.cartAbandonRate * 100 || 0).toFixed(1)}%`
                 })
-                setHealthScore(response.data.healthScore || 84)
+                setHealthScore(response.data.snapshot.healthScore || 0)
             }
+            
+            // Fetch AI actions (fixes)
+            try {
+                const fixesResponse = await dashboardAPI.getFixes(shop)
+                setAiActions(fixesResponse.data || [])
+            } catch (fixError) {
+                console.log('No AI actions available yet')
+                setAiActions([])
+            }
+            
+            // Fetch health history for revenue data
+            if (response.data?.scoreHistory) {
+                setRevenueData(response.data.scoreHistory)
+            }
+            
         } catch (error) {
             console.error('Error fetching dashboard data:', error)
-            // Use demo data as fallback
-            const timer = setTimeout(() => setHealthScore(84), 500)
-            return () => clearTimeout(timer)
+            const errorMessage = error.response?.data?.error || error.message || 'Failed to load dashboard data'
+            alert(`Error: ${errorMessage}`)
+            // Set default values when API fails
+            setHealthScore(0)
+            setStats({
+                conversion: '0%',
+                aov: '$0.00', 
+                cart: '0%'
+            })
         } finally {
             setLoading(false)
         }
@@ -87,10 +116,16 @@ export default function DashboardOverview() {
                 </div>
                 <div className="p-4 border-t border-slate-100">
                     <Link to="/" className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center">SJ</div>
+                        <div className="h-10 w-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center">
+                            {dashboardData?.merchant?.shopInfo?.name?.charAt(0) || 'S'}
+                        </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-900 truncate">Sarah Jenkins</p>
-                            <p className="text-xs text-slate-500 truncate">Growth Manager</p>
+                            <p className="text-sm font-medium text-slate-900 truncate">
+                                {dashboardData?.merchant?.shopInfo?.name || 'Store Owner'}
+                            </p>
+                            <p className="text-xs text-slate-500 truncate">
+                                {dashboardData?.merchant?.planTier || 'Free'} Plan
+                            </p>
                         </div>
                         <span className="material-symbols-outlined text-slate-400">logout</span>
                     </Link>
@@ -130,7 +165,7 @@ export default function DashboardOverview() {
                         <div className="relative group">
                             <button className="flex items-center gap-2 text-slate-900 font-semibold hover:text-primary transition-colors">
                                 <span className="material-symbols-outlined">storefront</span>
-                                <span>Fashion Nova Clone</span>
+                                <span>{dashboardData?.merchant?.shopInfo?.name || 'Loading Store...'}</span>
                                 <span className="material-symbols-outlined text-slate-400">expand_more</span>
                             </button>
                         </div>
@@ -165,7 +200,7 @@ export default function DashboardOverview() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <h1 className="text-2xl font-bold text-slate-900">Dashboard Overview</h1>
-                                <p className="text-sm text-slate-500 mt-1">Welcome back, Sarah. Here's what's happening.</p>
+                                <p className="text-sm text-slate-500 mt-1">Welcome back, {dashboardData?.merchant?.shopInfo?.owner?.firstName || 'Merchant'}. Here's what's happening.</p>
                             </div>
                             <div className="flex items-center gap-2 text-xs text-slate-500 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-full">
                                 <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
@@ -218,8 +253,13 @@ export default function DashboardOverview() {
                                                 {healthScore > 90 ? 'check_circle' : 'warning'}
                                             </span>
                                             <div>
-                                                <p className="text-sm font-medium text-slate-900">{healthScore > 90 ? 'Store Fully Optimized' : '3 Issues Detected'}</p>
-                                                <p className="text-xs text-slate-500">{healthScore > 90 ? 'All growth parameters are peak.' : 'SEO missing on 4 products.'}</p>
+                                                <p className="text-sm font-medium text-slate-900">
+                                                    {healthScore > 90 ? 'Store Fully Optimized' : `${dashboardData?.analysis?.problems?.length || 0} Issues Detected`}
+                                                </p>
+                                                <p className="text-xs text-slate-500">
+                                                    {healthScore > 90 ? 'All growth parameters are peak.' : 
+                                                     dashboardData?.analysis?.problems?.slice(0, 2).map(p => p.title).join(', ') || 'Run store analysis to detect issues.'}
+                                                </p>
                                             </div>
                                         </div>
                                         <Link to="/health" className="mt-1 w-full flex items-center justify-center gap-2 bg-primary text-white text-sm font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
@@ -244,7 +284,12 @@ export default function DashboardOverview() {
                                 </div>
                                 <div className="mt-6">
                                     <div className="flex items-baseline gap-2">
-                                        <h2 className="text-4xl font-bold text-primary tracking-tight">$12,430</h2>
+                                        <h2 className="text-4xl font-bold text-primary tracking-tight">
+                                            ${dashboardData?.analysis?.problems?.reduce((total, problem) => {
+                                                const impact = problem.fix?.estimatedImpact
+                                                return total + (impact ? parseFloat(impact.replace(/[^0-9.]/g, '')) : 0)
+                                            }, 0).toFixed(0) || '0'}
+                                        </h2>
                                     </div>
                                     <div className="flex items-center gap-3 mt-2">
                                         <span className="flex items-center text-sm font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
@@ -302,26 +347,53 @@ export default function DashboardOverview() {
                                     </div>
                                 </div>
                                 <div className="h-72 w-full relative">
-                                    <div className="absolute inset-0 flex flex-col justify-between text-xs text-slate-400 pl-8">
-                                        {['$50k', '$40k', '$30k', '$20k', '$10k', '0'].map(l => (
-                                            <div key={l} className="border-b border-slate-100 h-0 w-full flex items-center"><span className="-ml-8">{l}</span></div>
-                                        ))}
-                                    </div>
-                                    <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
-                                        <defs>
-                                            <linearGradient id="primaryGradient" x1="0" x2="0" y1="0" y2="1">
-                                                <stop offset="0%" stopColor="#135bec" stopOpacity="0.1" />
-                                                <stop offset="100%" stopColor="#135bec" stopOpacity="0" />
-                                            </linearGradient>
-                                        </defs>
-                                        <path d="M0,220 C100,210 200,180 300,150 S500,120 600,80 S800,90 1200,40" fill="none" stroke="#cbd5e1" strokeDasharray="4 4" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-                                        <path d="M0,280 C100,260 200,240 300,180 S500,100 600,90 S800,110 1200,60" fill="url(#primaryGradient)" stroke="#135bec" strokeWidth="3" vectorEffect="non-scaling-stroke" />
-                                        <circle cx="600" cy="90" fill="#135bec" r="6" stroke="white" strokeWidth="2" />
-                                    </svg>
-                                    <div className="absolute top-[25%] left-[50%] bg-slate-900 text-white text-xs rounded px-2 py-1 transform -translate-x-1/2 -translate-y-full shadow-lg pointer-events-none">$28,450</div>
+                                    {revenueData && revenueData.length > 0 ? (
+                                        <>
+                                            <div className="absolute inset-0 flex flex-col justify-between text-xs text-slate-400 pl-8">
+                                                {['$50k', '$40k', '$30k', '$20k', '$10k', '0'].map(l => (
+                                                    <div key={l} className="border-b border-slate-100 h-0 w-full flex items-center"><span className="-ml-8">{l}</span></div>
+                                                ))}
+                                            </div>
+                                            <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
+                                                <defs>
+                                                    <linearGradient id="primaryGradient" x1="0" x2="0" y1="0" y2="1">
+                                                        <stop offset="0%" stopColor="#135bec" stopOpacity="0.1" />
+                                                        <stop offset="100%" stopColor="#135bec" stopOpacity="0" />
+                                                    </linearGradient>
+                                                </defs>
+                                                {/* Simple line chart using real data */}
+                                                <path 
+                                                    d={`M0,${280 - (revenueData[0]?.healthScore || 0) * 2.8} ${revenueData.slice(1).map((point, i) => 
+                                                        `L${(i + 1) * 120},${280 - (point.healthScore || 0) * 2.8}`
+                                                    ).join(' ')}`}
+                                                    fill="url(#primaryGradient)" 
+                                                    stroke="#135bec" 
+                                                    strokeWidth="3" 
+                                                    vectorEffect="non-scaling-stroke" 
+                                                />
+                                                <circle cx="600" cy={280 - (revenueData[Math.floor(revenueData.length/2)]?.healthScore || 0) * 2.8} fill="#135bec" r="6" stroke="white" strokeWidth="2" />
+                                            </svg>
+                                            <div className="absolute top-[25%] left-[50%] bg-slate-900 text-white text-xs rounded px-2 py-1 transform -translate-x-1/2 -translate-y-full shadow-lg pointer-events-none">
+                                                Score: {revenueData[Math.floor(revenueData.length/2)]?.healthScore || 0}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-slate-400">
+                                            <div className="text-center">
+                                                <span className="material-symbols-outlined text-4xl">show_chart</span>
+                                                <p className="text-sm mt-2">No data available</p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex justify-between mt-2 text-xs text-slate-400 px-2">
-                                    {['Nov 1', 'Nov 7', 'Nov 14', 'Nov 21', 'Nov 28'].map(d => <span key={d}>{d}</span>)}
+                                    {revenueData && revenueData.length > 0 ? (
+                                        revenueData.slice(0, 5).map((data, i) => (
+                                            <span key={i}>{new Date(data.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                        ))
+                                    ) : (
+                                        ['No data'].map(d => <span key={d}>{d}</span>)
+                                    )}
                                 </div>
                             </motion.div>
 
@@ -332,28 +404,36 @@ export default function DashboardOverview() {
                                     <button className="text-xs font-semibold text-primary hover:text-blue-700">View All</button>
                                 </div>
                                 <div className="flex-1 overflow-y-auto pr-2 space-y-6">
-                                    {[
-                                        { title: 'Optimized Product Title', time: '2h ago', desc: 'Changed title to "Summer Floral Maxi Dress - Boho Style" for better SEO.', impact: '+12% Click-through exp.', active: true },
-                                        { title: 'Sent Recovery Emails', time: '5h ago', desc: 'Triggered sequence for 45 abandoned carts.', impact: null, active: false },
-                                        { title: 'Pricing Adjustment', time: 'Yesterday', desc: 'Adjusted bundle "Summer Set" pricing to $120 based on demand.', impact: null, active: false },
-                                    ].map((item) => (
-                                        <div key={item.title} className={`relative pl-6 border-l ${item.active ? 'border-primary/30' : 'border-slate-200'} pb-2`}>
-                                            <div className={`absolute -left-1.5 top-1.5 h-3 w-3 rounded-full ${item.active ? 'bg-primary' : 'bg-slate-300'} ring-4 ring-white`} />
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-sm font-medium text-slate-900">{item.title}</span>
-                                                    <span className="text-xs text-slate-400">{item.time}</span>
-                                                </div>
-                                                <p className="text-sm text-slate-500 leading-snug">{item.desc}</p>
-                                                {item.impact && (
-                                                    <div className="mt-1 flex items-center gap-1 text-xs font-medium text-emerald-600">
-                                                        <span className="material-symbols-outlined text-[14px]">trending_up</span>
-                                                        {item.impact}
+                                    {aiActions.length > 0 ? (
+                                        aiActions.slice(0, 5).map((action) => (
+                                            <div key={action.id} className={`relative pl-6 border-l ${action.status === 'applied' ? 'border-primary/30' : 'border-slate-200'} pb-2`}>
+                                                <div className={`absolute -left-1.5 top-1.5 h-3 w-3 rounded-full ${action.status === 'applied' ? 'bg-primary' : 'bg-slate-300'} ring-4 ring-white`} />
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-sm font-medium text-slate-900">{action.problemId}</span>
+                                                        <span className="text-xs text-slate-400">
+                                                            {new Date(action.createdAt).toLocaleDateString()}
+                                                        </span>
                                                     </div>
-                                                )}
+                                                    <p className="text-sm text-slate-500 leading-snug">
+                                                        {action.fixType} - {action.status}
+                                                    </p>
+                                                    {action.shopifyResponse && (
+                                                        <div className="mt-1 flex items-center gap-1 text-xs font-medium text-emerald-600">
+                                                            <span className="material-symbols-outlined text-[14px]">trending_up</span>
+                                                            Successfully applied
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-8">
+                                            <span className="material-symbols-outlined text-4xl text-slate-300">smart_toy</span>
+                                            <p className="text-sm text-slate-500 mt-2">No AI actions yet</p>
+                                            <p className="text-xs text-slate-400 mt-1">Run a store analysis to get started</p>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             </motion.div>
                         </div>

@@ -12,12 +12,22 @@ export function success(res, data = null, status = 200) {
  * Send an error JSON response.
  * Reads status and message from custom error classes when available.
  * @param {Response} res
- * @param {Error} err
+ * @param {Error|string} err
+ * @param {number} status
  */
-export function error(res, err) {
-  const status  = err.statusCode || 500;
-  const message = err.message    || 'Internal server error';
-  const code    = err.code       || 'INTERNAL_ERROR';
+export function error(res, err, status = 500) {
+  let statusCode = status;
+  let message = 'Internal server error';
+  let code = 'INTERNAL_ERROR';
 
-  return res.status(status).json({ success: false, error: { code, message } });
+  if (typeof err === 'string') {
+    message = err;
+    statusCode = status;
+  } else if (err) {
+    statusCode = err.statusCode || status;
+    message = err.message || 'Internal server error';
+    code = err.code || 'INTERNAL_ERROR';
+  }
+
+  return res.status(statusCode).json({ success: false, error: { code, message } });
 }

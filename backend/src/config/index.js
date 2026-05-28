@@ -7,12 +7,12 @@ function required(key) {
 }
 
 export const config = {
-  port:    parseInt(process.env.PORT || '3000', 10),
+  port:    parseInt(process.env.PORT || '3001', 10),
   env:     process.env.NODE_ENV || 'development',
   isDev:   process.env.NODE_ENV !== 'production',
 
-  mongo: {
-    uri: required('MONGODB_URI'),
+  postgres: {
+    uri: required('POSTGRES_URI'),
   },
 
   redis: {
@@ -31,8 +31,10 @@ export const config = {
   },
 
   ai: {
-    anthropicKey: required('ANTHROPIC_API_KEY'),
-    model:        process.env.AI_MODEL || 'claude-sonnet-4-6',
+    openaiKey: process.env.OPENAI_API_KEY || '',
+    anthropicKey: process.env.ANTHROPIC_API_KEY || '',
+    provider: process.env.AI_PROVIDER || 'openai',
+    model: process.env.AI_MODEL || 'gpt-4o-mini',
   },
 
   cron: {
