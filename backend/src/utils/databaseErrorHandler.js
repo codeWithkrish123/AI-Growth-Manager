@@ -58,8 +58,11 @@ export class DatabaseErrorHandler {
         throw new DatabaseError('Deadlock detected. Please retry the operation.', 'DEADLOCK_DETECTED');
       
       default:
-        // Log unknown errors for debugging
+        // Log unknown errors for debugging but don't expose internals
         logger.warn({ errorCode, errorMessage }, 'Unknown database error code');
+        if (process.env.NODE_ENV === 'production') {
+          throw new DatabaseError('A database error occurred. Please try again.', 'DATABASE_ERROR');
+        }
         throw new DatabaseError(`Database error: ${errorMessage}`, 'UNKNOWN_ERROR');
     }
   }

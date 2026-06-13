@@ -1,0 +1,38 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# AI Growth Manager – Production Override
+#
+# Usage (combine with base file):
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml up -d
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME}
+    # No port exposure in production (internal only)
+    ports: []
+
+  redis:
+    # No port exposure in production (internal only)
+    ports: []
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD:-}
+
+  app:
+    environment:
+      - NODE_ENV=production
+    # Remove the 'full' profile restriction in production
+    profiles: []
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'

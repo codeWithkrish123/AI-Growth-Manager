@@ -132,6 +132,17 @@ export async function handleShopifyCallback(req, res) {
       // Continue anyway - webhooks are not critical for basic functionality
     }
 
+    // Trigger initial sync+analyze — await so data is ready when dashboard loads
+    try {
+      const { triggerSync } = await import('./index.js');
+      const fakeReq = { merchant, params: { shopDomain } };
+      const fakeRes = { json: () => {}, status: () => ({ json: () => {} }) };
+      await triggerSync(fakeReq, fakeRes);
+      logger.info({ shopDomain }, 'Initial sync completed before redirect');
+    } catch (e) {
+      logger.warn({ shopDomain, error: e.message }, 'Initial sync failed (non-critical)');
+    }
+
     // Redirect to frontend with success using path parameter
     const redirectUrl = `${process.env.FRONTEND_URL}/dashboard/${encodeURIComponent(shopDomain)}?success=true`;
     res.redirect(redirectUrl);

@@ -1,12 +1,22 @@
+import crypto from 'crypto';
 import { logger } from '../utils/logger.js';
 import { shopifyCache } from '../utils/cache.js';
 import { MerchantModel } from '../models/index.js';
+
+// Lazy import to avoid circular dependency at startup
+let _syncQueue = null;
+async function getSyncQueue() {
+  if (!_syncQueue) {
+    const mod = await import('../workers/sync.worker.js');
+    _syncQueue = mod.syncQueue || null;
+  }
+  return _syncQueue;
+}
 
 /**
  * Shopify Webhook Processor
  * Handles incoming Shopify webhooks and triggers appropriate actions
  */
-
 export async function processWebhook(shopDomain, topic, payload) {
   logger.info({ shopDomain, topic }, 'Processing webhook');
 
@@ -42,96 +52,96 @@ export async function processWebhook(shopDomain, topic, payload) {
 }
 
 /**
- * Handle orders/create webhook
- * Invalidate orders cache and potentially trigger re-analysis
+ * Queue a background sync for the shop — debounced so multiple webhooks
+ * don't flood the queue. Uses BullMQ jobId deduplication.
  */
-async function handleOrderCreate(shopDomain, payload) {
-  // Invalidate orders cache
-  shopifyCache.deletePattern(`shopify:${shopDomain}:orders:`);
-  
-  // Invalidate checkouts cache since order was created from checkout
-  shopifyCache.deletePattern(`shopify:${shopDomain}:checkouts:`);
-  
-  logger.info({ shopDomain, orderId: payload.id }, 'Order created - cache invalidated');
-  
-  // In production, this would queue a background job to:
-  // 1. Fetch updated order data
-  // 2. Recalculate metrics
-  // 3. Trigger AI analysis if significant changes
+async function queueBackgroundSync(shopDomain, reason) {
+  try {
+    const syncQueue = await getSyncQueue();
+    if (!syncQueue) {
+      logger.debug({ shopDomain }, 'Sync queue not available — skipping background sync');
+      return;
+    }
+
+    // jobId deduplication: only one pending sync per shop at a time
+    await syncQueue.add(
+      'store-sync',
+      { shopDomain, reason },
+      {
+        jobId: `sync-${shopDomain}`,   // same id = deduplicated
+        delay: 10_000,                  // wait 10s to batch rapid webhook bursts
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+      }
+    );
+
+    logger.info({ shopDomain, reason }, 'Background sync queued via webhook');
+  } catch (err) {
+    // Non-fatal — cache invalidation already happened
+    logger.warn({ err, shopDomain }, 'Failed to queue background sync (non-fatal)');
+  }
 }
 
-/**
- * Handle orders/updated webhook
- * Invalidate orders cache
- */
+// ─── Topic Handlers ───────────────────────────────────────────────────────────
+
+async function handleOrderCreate(shopDomain, payload) {
+  shopifyCache.deletePattern(`shopify:${shopDomain}:orders:`);
+  shopifyCache.deletePattern(`shopify:${shopDomain}:checkouts:`);
+  logger.info({ shopDomain, orderId: payload.id }, 'Order created — cache invalidated');
+
+  // Queue a full resync so dashboard metrics update in real-time
+  await queueBackgroundSync(shopDomain, 'orders/create');
+}
+
 async function handleOrderUpdate(shopDomain, payload) {
   shopifyCache.deletePattern(`shopify:${shopDomain}:orders:`);
-  
-  logger.info({ shopDomain, orderId: payload.id }, 'Order updated - cache invalidated');
+  logger.info({ shopDomain, orderId: payload.id }, 'Order updated — cache invalidated');
+
+  await queueBackgroundSync(shopDomain, 'orders/updated');
 }
 
-/**
- * Handle products/create webhook
- * Invalidate products cache
- */
 async function handleProductCreate(shopDomain, payload) {
   shopifyCache.deletePattern(`shopify:${shopDomain}:products`);
-  
-  logger.info({ shopDomain, productId: payload.id }, 'Product created - cache invalidated');
+  logger.info({ shopDomain, productId: payload.id }, 'Product created — cache invalidated');
+
+  await queueBackgroundSync(shopDomain, 'products/create');
 }
 
-/**
- * Handle products/update webhook
- * Invalidate products cache and potentially trigger re-analysis
- */
 async function handleProductUpdate(shopDomain, payload) {
   shopifyCache.deletePattern(`shopify:${shopDomain}:products`);
-  
-  logger.info({ shopDomain, productId: payload.id }, 'Product updated - cache invalidated');
-  
-  // In production, this would queue a background job to:
-  // 1. Fetch updated product data
-  // 2. Recalculate product quality metrics
-  // 3. Trigger AI analysis if significant changes
+  logger.info({ shopDomain, productId: payload.id }, 'Product updated — cache invalidated');
+
+  await queueBackgroundSync(shopDomain, 'products/update');
 }
 
-/**
- * Handle checkouts/create webhook
- * Invalidate checkouts cache
- */
 async function handleCheckoutCreate(shopDomain, payload) {
   shopifyCache.deletePattern(`shopify:${shopDomain}:checkouts:`);
-  
-  logger.info({ shopDomain, checkoutId: payload.id }, 'Checkout created - cache invalidated');
+  logger.info({ shopDomain, checkoutId: payload.id }, 'Checkout created — cache invalidated');
+
+  // Phase 5.2 — Schedule abandoned cart recovery email (2hr delay)
+  try {
+    const { scheduleAbandonedCartEmail } = await import('./email/abandoned.cart.js');
+    await scheduleAbandonedCartEmail(shopDomain, payload);
+  } catch (err) {
+    logger.warn({ err }, 'Failed to schedule abandoned cart email (non-fatal)');
+  }
 }
 
-/**
- * Handle app/uninstalled webhook
- * Mark merchant as inactive and clear all cache
- */
 async function handleAppUninstall(shopDomain) {
-  // Mark merchant as inactive
-  await MerchantModel.updateByShopDomain(shopDomain, {
-    isActive: false,
-  });
-  
-  // Clear all cache for this shop
+  await MerchantModel.updateByShopDomain(shopDomain, { isActive: false });
   shopifyCache.invalidateShop(shopDomain);
-  
-  logger.info({ shopDomain }, 'App uninstalled - merchant deactivated and cache cleared');
+  logger.info({ shopDomain }, 'App uninstalled — merchant deactivated and cache cleared');
 }
 
 /**
  * Verify Shopify webhook HMAC signature
- * This is done in middleware, but included here for reference
  */
 export function verifyWebhookHmac(body, hmac, apiSecret) {
-  const crypto = require('crypto');
   const computedHmac = crypto
     .createHmac('sha256', apiSecret)
     .update(body, 'utf8')
     .digest('base64');
-  
+
   return crypto.timingSafeEqual(
     Buffer.from(computedHmac, 'utf8'),
     Buffer.from(hmac, 'utf8')

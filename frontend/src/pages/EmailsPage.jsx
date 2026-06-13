@@ -1,126 +1,418 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Mail, Send, Target, Users, BarChart3, ArrowUpRight, Inbox, Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Mail, Send, Target, Users, BarChart3, Inbox, Plus, Menu, RefreshCw, X, Sparkles, Wand2, Edit3, Eye, AlertCircle } from 'lucide-react'
+import Sidebar from '../components/Sidebar'
+import { dashboardAPI, errMsg } from '../services/api'
 
-const EmailsPage = () => {
-    const campaigns = [
-        { id: 1, name: 'Summer Welcome Flow', status: 'Active', opens: '42%', clicks: '12%', sent: '1,240' },
-        { id: 2, name: 'Abandoned Cart Recovery', status: 'Paused', opens: '38%', clicks: '8%', sent: '450' },
-        { id: 3, name: 'VIP Customer Reward', status: 'Scheduled', opens: '-', clicks: '-', sent: '0' },
-        { id: 4, name: 'Product Launch Update', status: 'Active', opens: '51%', clicks: '24%', sent: '5,000' },
-    ];
+export default function EmailsPage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isDark,       setIsDark]     = useState(() => document.documentElement.classList.contains('dark'))
+  const [campaigns,    setCampaigns]  = useState([])
+  const [analytics,    setAnalytics]  = useState(null)
+  const [loading,      setLoading]    = useState(true)
+  const [showCreate,   setShowCreate] = useState(false)
+  const [creating,     setCreating]   = useState(false)
+  const [toast,        setToast]      = useState(null)
+  const [previewCamp,  setPreviewCamp]= useState(null)
+  const [confirmSend,  setConfirmSend]= useState(null)
+  const [sending,      setSending]    = useState(false)
 
-    return (
-        <div className="min-h-screen bg-slate-50 flex">
-            {/* Sidebar Placeholder */}
-            <aside className="w-64 border-r border-slate-200 bg-white flex flex-col p-6 fixed h-screen z-20">
-                <Link to="/dashboard" className="flex items-center gap-3 mb-10 px-2">
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                        <Mail className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="font-bold text-lg text-slate-900">GrowthAI</span>
-                </Link>
-                <nav className="flex-1 space-y-1">
-                    <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 transition-all">
-                        <span className="material-symbols-outlined">dashboard</span>
-                        <span className="text-sm font-bold">Overview</span>
-                    </Link>
-                    <Link to="/health" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 transition-all">
-                        <span className="material-symbols-outlined">health_metrics</span>
-                        <span className="text-sm font-bold">Health Score</span>
-                    </Link>
-                    <Link to="/products" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 transition-all">
-                        <span className="material-symbols-outlined">inventory_2</span>
-                        <span className="text-sm font-bold">Products</span>
-                    </Link>
-                    <Link to="/ai-actions" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 transition-all">
-                        <span className="material-symbols-outlined">smart_toy</span>
-                        <span className="text-sm font-bold">AI Actions</span>
-                    </Link>
-                    <Link to="/emails" className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-primary/5 text-primary transition-all">
-                        <span className="material-symbols-outlined fill">mail</span>
-                        <span className="text-sm font-bold">Emails</span>
-                    </Link>
-                </nav>
-            </aside>
+  const [mode,       setMode]      = useState('manual')
+  const [form,       setForm]      = useState({ name: '', subject: '', type: 'promotional', body: '' })
+  const [aiPrompt,   setAiPrompt]  = useState('')
+  const [generating, setGenerating]= useState(false)
+  const [aiResult,   setAiResult]  = useState(null)
 
-            <main className="ml-64 flex-1 p-10">
-                <header className="flex items-center justify-between mb-10">
-                    <div>
-                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Email Campaigns</h2>
-                        <p className="text-slate-500 text-sm font-medium mt-1">AI-written flows that convert customers on autopilot.</p>
-                    </div>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all">
-                        <Plus className="w-4 h-4" />
-                        New Campaign
-                    </button>
-                </header>
+  const shop = localStorage.getItem('currentShop') || ''
 
-                <div className="grid grid-cols-4 gap-6 mb-10">
-                    {[
-                        { label: 'Total Sent', value: '42,120', icon: Send, color: 'text-blue-600', bg: 'bg-blue-50' },
-                        { label: 'Avg Open Rate', value: '34.5%', icon: Inbox, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                        { label: 'Click Rate', value: '8.2%', icon: Target, color: 'text-purple-600', bg: 'bg-purple-50' },
-                        { label: 'Subscribers', value: '12,400', icon: Users, color: 'text-amber-600', bg: 'bg-amber-50' },
-                    ].map((stat, i) => (
-                        <div key={i} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                            <div className={`${stat.bg} ${stat.color} w-10 h-10 rounded-xl flex items-center justify-center mb-4`}>
-                                <stat.icon className="w-5 h-5" />
-                            </div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
-                            <h4 className="text-2xl font-black text-slate-900">{stat.value}</h4>
-                        </div>
-                    ))}
-                </div>
+  const toggleDark = () => { const n = !isDark; setIsDark(n); document.documentElement.classList.toggle('dark', n); localStorage.setItem('theme', n ? 'dark' : 'light') }
+  const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3500) }
 
-                <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-                        <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-3">
-                            <BarChart3 className="w-5 h-5 text-primary" />
-                            Campaign Performance
-                        </h3>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-slate-100 text-[11px] font-black text-slate-400 uppercase tracking-widest bg-slate-50/50">
-                                    <th className="px-8 py-4">Campaign Name</th>
-                                    <th className="px-6 py-4">Status</th>
-                                    <th className="px-6 py-4">Opens</th>
-                                    <th className="px-6 py-4">Clicks</th>
-                                    <th className="px-6 py-4">Total Sent</th>
-                                    <th className="px-8 py-4 text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {campaigns.map((c) => (
-                                    <tr key={c.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-8 py-6">
-                                            <span className="text-sm font-bold text-slate-900">{c.name}</span>
-                                        </td>
-                                        <td className="px-6 py-6 font-bold">
-                                            <span className={`text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full ${c.status === 'Active' ? 'bg-emerald-50 text-emerald-600' :
-                                                    c.status === 'Paused' ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500'
-                                                }`}>
-                                                {c.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-6 text-sm font-bold text-slate-900">{c.opens}</td>
-                                        <td className="px-6 py-6 text-sm font-bold text-slate-900">{c.clicks}</td>
-                                        <td className="px-6 py-6 text-sm font-medium text-slate-500">{c.sent}</td>
-                                        <td className="px-8 py-6 text-right">
-                                            <button className="text-primary text-xs font-black uppercase tracking-widest hover:underline">Edit Flow</button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </main>
+  useEffect(() => { if (shop) fetchAll() }, [shop])
+
+  const fetchAll = async () => {
+    try {
+      setLoading(true)
+      const [campRes, analRes] = await Promise.allSettled([
+        dashboardAPI.getEmailCampaigns(shop),
+        dashboardAPI.getEmailAnalytics(shop),
+      ])
+      if (campRes.status === 'fulfilled') {
+        const d = campRes.value.data?.data || campRes.value.data || []
+        setCampaigns(Array.isArray(d) ? d : [])
+      }
+      if (analRes.status === 'fulfilled') setAnalytics(analRes.value.data?.data || analRes.value.data || null)
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
+  }
+
+  const handleGenerate = async () => {
+    if (!aiPrompt.trim()) return showToast('Enter a prompt first', 'error')
+    try {
+      setGenerating(true)
+      const res = await dashboardAPI.aiPromptComposeEmail(shop, { prompt: aiPrompt })
+      const data = res.data?.data || res.data
+      setAiResult({ subject: data.subject, body: data.body })
+      setForm(p => ({ ...p, subject: data.subject, body: data.body, name: p.name || aiPrompt.slice(0, 40) }))
+      showToast('Email generated! Review and edit below.')
+    } catch (e) { showToast(errMsg(e, 'Generation failed'), 'error') }
+    finally { setGenerating(false) }
+  }
+
+  const handleCreate = async () => {
+    if (!form.name) return showToast('Campaign name is required', 'error')
+    const subject = form.subject || aiResult?.subject
+    if (!subject) return showToast('Subject is required', 'error')
+    try {
+      setCreating(true)
+      await dashboardAPI.createEmailCampaign(shop, { name: form.name, type: form.type, subject, body: form.body || aiResult?.body })
+      showToast('Campaign created!')
+      closeModal(); fetchAll()
+    } catch (e) { showToast(errMsg(e, 'Create failed'), 'error') }
+    finally { setCreating(false) }
+  }
+
+  const handleSendConfirmed = async () => {
+    if (!confirmSend) return
+    try {
+      setSending(true)
+      const res = await dashboardAPI.sendEmailCampaign(shop, confirmSend)
+      const data = res.data?.data || res.data
+      showToast(`✅ Sent to ${data?.sent ?? '?'} customers!`)
+      setConfirmSend(null); fetchAll()
+    } catch (e) { showToast('Send failed: ' + errMsg(e), 'error') }
+    finally { setSending(false) }
+  }
+
+  const closeModal = () => {
+    setShowCreate(false); setMode('manual')
+    setForm({ name: '', subject: '', type: 'promotional', body: '' })
+    setAiPrompt(''); setAiResult(null)
+  }
+
+  const stats = [
+    { label: 'Total Sent',     value: campaigns.reduce((s,c)=>s+(c.total_sent||0),0),      icon: Send,   color: 'text-blue-500',    bg: 'badge-blue' },
+    { label: 'Avg Open Rate',  value: campaigns.length ? `${(campaigns.reduce((s,c)=>s+parseFloat(c.open_rate||0),0)/campaigns.length).toFixed(1)}%` : '—', icon: Inbox,  color: 'text-emerald-500', bg: 'badge-green' },
+    { label: 'Avg Click Rate', value: campaigns.length ? `${(campaigns.reduce((s,c)=>s+parseFloat(c.click_rate||0),0)/campaigns.length).toFixed(1)}%` : '—', icon: Target, color: 'text-purple-500',  bg: 'badge-purple' },
+    { label: 'Campaigns',      value: campaigns.length,                                     icon: Users,  color: 'text-amber-500',   bg: 'badge-amber' },
+  ]
+
+  return (
+    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--c-bg)' }}>
+      <Sidebar active="emails" shop={shop} onDarkModeToggle={toggleDark} isDark={isDark}
+        mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
+
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-lg text-white text-sm font-semibold shadow-xl ${toast.type==='error'?'bg-red-500':'bg-emerald-500'}`}>
+          {toast.msg}
         </div>
-    );
-};
+      )}
 
-export default EmailsPage;
+      <main className="flex-1 lg:ml-[var(--c-sidebar-w)] overflow-y-auto scrollbar-hide">
+
+        {/* Header */}
+        <div className="sticky top-0 z-20 flex items-center justify-between px-7 py-4 border-b backdrop-blur-sm"
+          style={{ borderColor: 'var(--c-border)', background: 'var(--c-bg)' }}>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden" style={{ color: 'var(--c-text-muted)' }}>
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-lg font-black flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
+                <Mail className="w-5 h-5 text-blue-400" />
+                Email Campaigns
+              </h1>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-muted)' }}>
+                Create, send, and track emails to your Shopify customers.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={fetchAll} className="btn-ghost text-xs">
+              <RefreshCw className={`w-3.5 h-3.5 ${loading?'animate-spin':''}`} /> Refresh
+            </button>
+            <button onClick={() => setShowCreate(true)} className="btn-primary text-xs">
+              <Plus className="w-3.5 h-3.5" /> New Campaign
+            </button>
+          </div>
+        </div>
+
+        <div className="px-7 py-6 space-y-5 max-w-5xl">
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {stats.map((s, i) => (
+              <div key={i} className="card p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`badge ${s.bg}`} style={{ padding: '6px' }}>
+                    <s.icon className="w-3.5 h-3.5" />
+                  </span>
+                  <p className="text-xs font-medium" style={{ color: 'var(--c-text-muted)' }}>{s.label}</p>
+                </div>
+                <p className="stat-number">{s.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Campaigns table */}
+          <div className="card overflow-hidden">
+            <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--c-border-light)' }}>
+              <p className="section-title flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" style={{ color: 'var(--c-primary)' }} />
+                Campaign Performance
+              </p>
+              <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>{campaigns.length} campaigns</p>
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-16">
+                <RefreshCw className="w-6 h-6 animate-spin" style={{ color: 'var(--c-primary)' }} />
+              </div>
+            ) : campaigns.length === 0 ? (
+              <div className="text-center py-16">
+                <Mail className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--c-border)' }} />
+                <p className="text-sm font-semibold" style={{ color: 'var(--c-text-muted)' }}>No campaigns yet</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--c-text-subtle)' }}>Create your first campaign above</p>
+              </div>
+            ) : (
+              <>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Campaign</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>Sent</th>
+                      <th>Open Rate</th>
+                      <th>Click Rate</th>
+                      <th className="text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {campaigns.map((c) => (
+                      <tr key={c.id}>
+                        <td>
+                          <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{c.name}</p>
+                          <p className="text-xs truncate max-w-[180px]" style={{ color: 'var(--c-text-muted)' }}>{c.subject}</p>
+                        </td>
+                        <td>
+                          <span className="text-xs capitalize" style={{ color: 'var(--c-text-secondary)' }}>
+                            {c.type?.replace('_',' ')}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`badge ${
+                            c.status==='sent'    ? 'badge-green' :
+                            c.status==='draft'   ? 'badge-indigo' :
+                            c.status==='sending' ? 'badge-blue' : 'badge-amber'
+                          }`}>{c.status}</span>
+                        </td>
+                        <td><span className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>{c.total_sent ?? 0}</span></td>
+                        <td>
+                          <span className={`text-sm font-semibold ${c.status==='sent' ? 'text-emerald-500' : ''}`} style={c.status!=='sent'?{color:'var(--c-text-subtle)'}:{}}>
+                            {c.status==='sent' ? `${c.open_rate ?? 0}%` : '—'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`text-sm font-semibold ${c.status==='sent' ? 'text-purple-500' : ''}`} style={c.status!=='sent'?{color:'var(--c-text-subtle)'}:{}}>
+                            {c.status==='sent' ? `${c.click_rate ?? 0}%` : '—'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="flex items-center justify-end gap-2">
+                            {c.body && (
+                              <button onClick={() => setPreviewCamp(c)} className="btn-ghost text-xs p-1.5" title="Preview">
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {(c.status==='draft' || c.status==='scheduled') ? (
+                              <button onClick={() => setConfirmSend(c.id)} className="btn-primary text-xs">
+                                <Send className="w-3 h-3" /> Send
+                              </button>
+                            ) : c.status==='sent' ? (
+                              <span className="text-xs" style={{ color: 'var(--c-text-subtle)' }}>Delivered</span>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {campaigns.some(c => c.status === 'draft') && (
+                  <div className="px-5 py-3 border-t flex items-start gap-2"
+                    style={{ borderColor: 'var(--c-border-light)', background: 'var(--c-primary-light)' }}>
+                    <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: 'var(--c-primary)' }} />
+                    <p className="text-xs" style={{ color: 'var(--c-primary)' }}>
+                      Draft campaigns show — until sent. Click <strong>Send</strong> to deliver to all your Shopify customers.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* ── Preview Modal ── */}
+      {previewCamp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setPreviewCamp(null)} />
+          <div className="relative rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" style={{ background: 'var(--c-surface)' }}>
+            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--c-border)' }}>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{previewCamp.name}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-muted)' }}>Subject: {previewCamp.subject}</p>
+              </div>
+              <button onClick={() => setPreviewCamp(null)} className="btn-ghost p-1.5"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-6">
+              <div className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--c-border)' }}>
+                <div className="px-6 py-4" style={{ background: 'var(--c-primary)' }}>
+                  <p className="text-white font-bold">{shop.replace('.myshopify.com','')}</p>
+                </div>
+                <div className="p-6" dangerouslySetInnerHTML={{ __html: previewCamp.body || '<p>No email body.</p>' }} />
+                <div className="px-6 py-3 text-center" style={{ background: 'var(--c-bg)' }}>
+                  <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>Powered by AI Growth Manager</p>
+                </div>
+              </div>
+            </div>
+            {(previewCamp.status==='draft'||previewCamp.status==='scheduled') && (
+              <div className="px-6 py-4 border-t" style={{ borderColor: 'var(--c-border)' }}>
+                <button onClick={() => { setPreviewCamp(null); setConfirmSend(previewCamp.id) }} className="btn-primary w-full justify-center">
+                  <Send className="w-4 h-4" /> Send This Campaign
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Send Confirmation ── */}
+      {confirmSend && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !sending && setConfirmSend(null)} />
+          <div className="relative rounded-xl w-full max-w-sm shadow-2xl p-8 text-center" style={{ background: 'var(--c-surface)' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ background: 'var(--c-primary-light)' }}>
+              <Send className="w-5 h-5" style={{ color: 'var(--c-primary)' }} />
+            </div>
+            <p className="text-base font-bold mb-2" style={{ color: 'var(--c-text)' }}>Send to all customers?</p>
+            <p className="text-xs mb-6" style={{ color: 'var(--c-text-muted)' }}>This will email all customers in your Shopify store via Resend. Cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmSend(null)} disabled={sending} className="btn-ghost flex-1 justify-center">Cancel</button>
+              <button onClick={handleSendConfirmed} disabled={sending} className="btn-primary flex-1 justify-center">
+                {sending ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Sending…</> : <><Send className="w-3.5 h-3.5" /> Send</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Create Campaign Modal ── */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={closeModal} />
+          <div className="relative rounded-xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" style={{ background: 'var(--c-surface)' }}>
+
+            <div className="flex items-center justify-between px-6 pt-6 pb-0">
+              <p className="text-base font-bold" style={{ color: 'var(--c-text)' }}>New Email Campaign</p>
+              <button onClick={closeModal} className="btn-ghost p-1.5"><X className="w-4 h-4" /></button>
+            </div>
+
+            {/* Mode toggle */}
+            <div className="flex gap-2 px-6 mt-4">
+              <button onClick={() => setMode('manual')}
+                className={mode==='manual' ? 'btn-primary flex-1 justify-center text-xs' : 'btn-ghost flex-1 justify-center text-xs'}>
+                <Edit3 className="w-3.5 h-3.5" /> Manual
+              </button>
+              <button onClick={() => setMode('ai')}
+                className={mode==='ai' ? 'btn-primary flex-1 justify-center text-xs' : 'btn-ghost flex-1 justify-center text-xs'}>
+                <Wand2 className="w-3.5 h-3.5" /> AI Compose
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+              <div>
+                <label className="text-xs font-medium uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--c-text-muted)' }}>Campaign Name</label>
+                <input value={form.name} onChange={e => setForm(p=>({...p,name:e.target.value}))}
+                  placeholder="e.g. Summer Sale Promo" className="input-field" />
+              </div>
+              <div>
+                <label className="text-xs font-medium uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--c-text-muted)' }}>Type</label>
+                <select value={form.type} onChange={e => setForm(p=>({...p,type:e.target.value}))} className="input-field">
+                  <option value="promotional">Promotional</option>
+                  <option value="abandoned_cart">Abandoned Cart</option>
+                  <option value="welcome">Welcome Flow</option>
+                  <option value="winback">Win-back</option>
+                  <option value="newsletter">Newsletter</option>
+                  <option value="announcement">Announcement</option>
+                </select>
+              </div>
+
+              {mode==='ai' && (
+                <>
+                  <div>
+                    <label className="text-xs font-medium uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--c-text-muted)' }}>
+                      What do you want to tell customers?
+                    </label>
+                    <textarea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} rows={3}
+                      placeholder="e.g. Summer sale — 30% off all products this weekend. Make it exciting and urgent."
+                      className="input-field resize-none" />
+                  </div>
+                  <button onClick={handleGenerate} disabled={generating || !aiPrompt.trim()} className="btn-primary w-full justify-center">
+                    {generating
+                      ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Generating…</>
+                      : <><Sparkles className="w-3.5 h-3.5" /> Generate with AI</>
+                    }
+                  </button>
+                  {aiResult && (
+                    <div className="rounded-lg p-4 border space-y-3" style={{ background: 'var(--c-primary-light)', borderColor: 'var(--c-primary)' }}>
+                      <p className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--c-primary)' }}>
+                        <Sparkles className="w-3 h-3" /> AI Generated — edit before saving
+                      </p>
+                      <div>
+                        <label className="text-xs font-medium uppercase tracking-wider mb-1 block" style={{ color: 'var(--c-text-muted)' }}>Subject Line</label>
+                        <input value={form.subject} onChange={e => setForm(p=>({...p,subject:e.target.value}))} className="input-field" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium uppercase tracking-wider mb-1 block" style={{ color: 'var(--c-text-muted)' }}>Email Body (HTML)</label>
+                        <textarea value={form.body} onChange={e => setForm(p=>({...p,body:e.target.value}))} rows={8}
+                          className="input-field resize-y font-mono text-xs" />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {mode==='manual' && (
+                <>
+                  <div>
+                    <label className="text-xs font-medium uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--c-text-muted)' }}>Subject Line</label>
+                    <input value={form.subject} onChange={e => setForm(p=>({...p,subject:e.target.value}))}
+                      placeholder="e.g. You left something behind 👀" className="input-field" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--c-text-muted)' }}>Email Body (HTML)</label>
+                    <textarea value={form.body} onChange={e => setForm(p=>({...p,body:e.target.value}))} rows={6}
+                      placeholder="<p>Hi there,</p><p>Your message...</p>"
+                      className="input-field resize-y font-mono text-xs" />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="px-6 pb-6 pt-2">
+              <button onClick={handleCreate} disabled={creating || (mode==='ai' && !aiResult)} className="btn-primary w-full justify-center">
+                {creating
+                  ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Creating…</>
+                  : <><Plus className="w-3.5 h-3.5" /> Create Campaign</>
+                }
+              </button>
+              {mode==='ai' && !aiResult && (
+                <p className="text-center text-xs mt-2" style={{ color: 'var(--c-text-subtle)' }}>Generate the email first, then create</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

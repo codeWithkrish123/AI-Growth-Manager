@@ -29,52 +29,53 @@ export async function getGoogleAuthUrl(req, res) {
 // Handle Google OAuth callback
 export async function handleGoogleCallback(req, res) {
   try {
-    console.log('Google OAuth callback received');
+    logger.debug('Google OAuth callback received');
     const { code } = req.query;
-    console.log('Code received:', !!code);
+    logger.debug({ hasCode: !!code }, 'OAuth code status');
     
     if (!code) {
-      console.log('No code provided');
+      logger.warn('Google OAuth callback missing authorization code');
       return error(res, 'Authorization code not provided', 400);
     }
 
     // Get tokens from Google
-    console.log('Getting tokens from Google...');
+    logger.debug('Requesting tokens from Google OAuth');
     const { tokens } = await oauth2Client.getToken(code);
-    console.log('Tokens received successfully');
+    logger.debug('Google OAuth tokens received successfully');
     oauth2Client.setCredentials(tokens);
 
     // Get user info from Google
-    console.log('Getting user info from Google...');
+    logger.debug('Fetching user info from Google API');
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
     const { data: userInfo } = await oauth2.userinfo.get();
-    console.log('User info received:', userInfo.email);
+    logger.debug({ email: userInfo.email }, 'Google user info retrieved');
 
     // Find or create merchant
-    console.log('Finding merchant for email:', userInfo.email);
+    logger.debug({ email: userInfo.email }, 'Looking up merchant by email');
     let merchant = await MerchantModel.findOne({ email: userInfo.email });
-    console.log('Merchant found:', !!merchant);
+    logger.debug({ merchantExists: !!merchant }, 'Merchant lookup result');
     
     if (!merchant) {
-      // Create new merchant for Google user
-      console.log('Creating new merchant...');
+      // Create a placeholder merchant for Google user — NO fake shopDomain
+      // They will connect their real Shopify store in onboarding
+      logger.info({ email: userInfo.email }, 'Creating new user record for Google user');
       merchant = await MerchantModel.create({
-        email: userInfo.email,
-        shopDomain: `${userInfo.email.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}.myshopify.com`,
+        shopDomain: `pending-${Date.now()}.myshopify.com`, // temp placeholder, will be updated after Shopify OAuth
         shopInfo: {
           name: userInfo.name,
           email: userInfo.email,
           picture: userInfo.picture,
-          authProvider: 'google'
+          authProvider: 'google',
+          shopifyConnected: false,
         },
-        isActive: true,
+        isActive: false, // not active until Shopify store is connected
         planTier: 'free',
         lastSyncAt: null
       });
-      console.log('Merchant created successfully');
+      logger.info({ merchantId: merchant.id, email: userInfo.email }, 'New user record created — needs Shopify store connection');
     } else {
       // Update existing merchant with Google info
-      console.log('Updating existing merchant...');
+      logger.debug({ merchantId: merchant.id }, 'Updating existing merchant with Google info');
       merchant.shopInfo = {
         ...merchant.shopInfo,
         name: userInfo.name,
@@ -82,27 +83,24 @@ export async function handleGoogleCallback(req, res) {
         authProvider: 'google'
       };
       await merchant.save();
-      console.log('Merchant updated successfully');
+      logger.debug({ merchantId: merchant.id }, 'Merchant updated successfully');
     }
 
     // Generate JWT token
-    console.log('Generating JWT token...');
+    logger.debug({ merchantId: merchant.id }, 'Generating JWT token');
     const token = jwt.sign(
       { 
         merchantId: merchant.id,
-        email: merchant.email,
-        shopDomain: merchant.shopDomain 
+        email: userInfo.email,
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    console.log('JWT token generated successfully');
 
-    // Redirect to onboarding page (not dashboard) - user needs to connect store first
-    const redirectUrl = `${process.env.FRONTEND_URL}/onboarding?token=${token}&merchant=${encodeURIComponent(merchant.shopDomain)}`;
-    console.log('Redirecting to:', redirectUrl);
-    
-    logger.info({ email: userInfo.email, shopDomain: merchant.shopDomain }, 'Google OAuth successful');
+    // Redirect to onboarding — user must connect their real Shopify store
+    // Do NOT pass the fake shopDomain — frontend will prompt for real store
+    const redirectUrl = `${process.env.FRONTEND_URL}/onboarding?token=${token}`;
+    logger.info({ email: userInfo.email }, 'Google OAuth successful — redirecting to onboarding');
     return res.redirect(redirectUrl);
 
   } catch (err) {
@@ -110,6 +108,7 @@ export async function handleGoogleCallback(req, res) {
     
     // Provide more detailed error message
     const errorMessage = err.message || 'Authentication failed';
-    return error(res, `Google authentication failed: ${errorMessage}`, 500);
+    const errorDetails = err.response?.data || err.code || '';
+    return error(res, `Google authentication failed: ${errorMessage} ${JSON.stringify(errorDetails)}`, 500);
   }
 }

@@ -1,1 +1,1 @@
-export { authAPI, dashboardAPI, aiAPI, shopifyAPI, webhookAPI} from './api';
+export { dashboardAPI, authAPI, default as api } from './api.js';

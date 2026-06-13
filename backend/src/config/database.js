@@ -171,8 +171,3 @@ export async function batchQuery(queries) {
 }
 
 export { pool };
-
-console.log("PASSWORD:", process.env.DB_PASSWORD);
-console.log("TYPE:", typeof process.env.DB_PASSWORD);
-
-// Default export

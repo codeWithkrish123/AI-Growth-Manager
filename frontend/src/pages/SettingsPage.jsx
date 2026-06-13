@@ -1,104 +1,244 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { User, FileText, Lock, Shield, Settings, Zap, ArrowRight, Edit3, ChevronRight, LogOut } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { User, Shield, Zap, Store, LogOut, Menu, ChevronRight, ExternalLink, Bell, Settings } from 'lucide-react'
+import Sidebar from '../components/Sidebar'
+import { useNavigate } from 'react-router-dom';
 
-const SettingsPage = () => {
-    const sidebarItems = [
-        { icon: User, label: 'Basic Details', active: true },
-        { icon: FileText, label: 'Reports' },
-        { icon: Lock, label: 'Change Password' },
-        { icon: Shield, label: 'Change Groww PIN' },
-        { icon: Settings, label: 'Trading controls' },
-        { icon: Zap, label: 'Trading APIs' },
-        { icon: ArrowRight, label: 'Sell authorisation mode' },
-        { icon: FileText, label: 'Trading Details' },
-        { icon: FileText, label: 'Account Related Forms' },
-    ];
+const AI_SETTINGS_KEY = 'aiSettings'
 
-    const personalDetails = [
-        { label: 'Full Name', value: 'Krish Sah', editable: false },
-        { label: 'Date of Birth', value: '-', editable: false },
-        { label: 'Mobile Number', value: '*****81038', editable: true },
-        { label: 'Email Address', value: 'sah*******6@gmail.com', editable: true },
-        { label: 'Marital Status', value: '-', editable: true },
-        { label: 'Gender', value: '-', editable: false },
-        { label: 'Income Range', value: '-', editable: true },
-        { label: 'Occupation', value: '-', editable: true },
-    ];
+const DEFAULT_AI_SETTINGS = {
+  autoApplyFixes:   true,
+  aiEmailGen:       true,
+  priceOptimizer:   false,
+  dailyAutoAnalysis: true,
+}
 
-    return (
-        <div className="min-h-screen bg-slate-50">
-            {/* Minimal Header */}
-            <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-30">
-                <Link to="/dashboard" className="flex items-center gap-2 text-primary">
-                    <span className="material-symbols-outlined fill text-2xl">auto_graph</span>
-                    <span className="text-lg font-bold tracking-tight text-slate-900">GrowthAI</span>
-                </Link>
-                <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-2 text-slate-500 hover:text-red-600 font-bold text-sm transition-colors">
-                        <LogOut className="w-4 h-4" />
-                        Sign Out
-                    </button>
-                </div>
-            </header>
+const SECTIONS = [
+  { icon: Store,    label: 'Store Connection', id: 'store' },
+  { icon: User,     label: 'Account',          id: 'account' },
+  { icon: Zap,      label: 'AI Settings',       id: 'ai' },
+  { icon: Bell,     label: 'Notifications',     id: 'notifications' },
+  { icon: Shield,   label: 'Security',          id: 'security' },
+];
 
-            <div className="max-w-6xl mx-auto flex p-8 gap-8">
-                {/* Profile Sidebar */}
-                <aside className="w-72 flex-shrink-0">
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
-                        <div className="p-8 flex flex-col items-center text-center border-b border-slate-100">
-                            <div className="w-20 h-20 rounded-full bg-orange-700 text-white flex items-center justify-center text-3xl font-bold mb-4">
-                                K
-                            </div>
-                            <h3 className="text-lg font-extrabold text-slate-900">Krish Sah</h3>
-                        </div>
-                        <nav className="p-2">
-                            {sidebarItems.map((item, i) => (
-                                <button
-                                    key={i}
-                                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${item.active ? 'bg-slate-50 text-slate-900' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                                        }`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <item.icon className={`w-4 h-4 ${item.active ? 'text-primary' : ''}`} />
-                                        <span className="text-sm font-bold">{item.label}</span>
-                                    </div>
-                                    <ChevronRight className="w-4 h-4 opacity-30" />
-                                </button>
-                            ))}
-                        </nav>
-                    </div>
-                </aside>
+export default function SettingsPage() {
+  const navigate = useNavigate()
+  const [sidebarOpen,    setSidebarOpen]    = useState(false)
+  const [isDark,         setIsDark]         = useState(() => document.documentElement.classList.contains('dark'))
+  const [activeSection,  setActiveSection]  = useState('store')
+  const [aiSettings,     setAiSettings]     = useState(() => {
+    try { return { ...DEFAULT_AI_SETTINGS, ...JSON.parse(localStorage.getItem(AI_SETTINGS_KEY) || '{}') } }
+    catch { return DEFAULT_AI_SETTINGS }
+  })
+  const shop = localStorage.getItem('currentShop') || ''
+  const shopName = shop.replace('.myshopify.com', '')
 
-                {/* Profile Content */}
-                <section className="flex-1">
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-                        <div className="mb-8">
-                            <h2 className="text-xl font-black text-slate-900 mb-1">Personal Details</h2>
-                            <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">PAN - </p>
-                        </div>
+  const toggleDark = () => {
+    const next = !isDark; setIsDark(next)
+    document.documentElement.classList.toggle('dark', next)
+    localStorage.setItem('theme', next ? 'dark' : 'light')
+  }
 
-                        <div className="space-y-0 text-sm">
-                            {personalDetails.map((detail, i) => (
-                                <div key={i} className="group border-t border-slate-100 first:border-0 py-6 flex items-center justify-between">
-                                    <div className="space-y-1">
-                                        <p className="text-slate-400 font-bold uppercase text-[11px] tracking-widest">{detail.label}</p>
-                                        <p className="text-slate-900 font-bold text-base transition-all group-hover:text-primary">{detail.value}</p>
-                                    </div>
-                                    {detail.editable && (
-                                        <button className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0">
-                                            <Edit3 className="w-5 h-5" />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
+  const toggleAiSetting = (key) => {
+    const next = { ...aiSettings, [key]: !aiSettings[key] }
+    setAiSettings(next)
+    localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(next))
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f8f9fa] flex">
+      <Sidebar active="settings" shop={shop} onDarkModeToggle={toggleDark} isDark={isDark}
+        mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
+
+      <main className="flex-1 lg:ml-[var(--c-sidebar-w)] overflow-y-auto">
+        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-7 sticky top-0 z-10">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-500"><Menu className="w-5 h-5" /></button>
+            <div className="flex items-center gap-2">
+              <Settings className="w-4 h-4 text-slate-400" />
+              <h1 className="text-base font-semibold text-slate-900">Settings</h1>
             </div>
-        </div>
-    );
-};
+          </div>
+          <button onClick={() => { localStorage.clear(); navigate('/') }}
+            className="flex items-center gap-2 text-sm text-slate-500 hover:text-red-500 transition-colors">
+            <LogOut className="w-4 h-4" /> Sign Out
+          </button>
+        </header>
 
-export default SettingsPage;
+        <div className="max-w-5xl mx-auto flex gap-6 p-6 md:p-8">
+          {/* Left nav */}
+          <aside className="w-52 flex-shrink-0">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="p-5 border-b border-slate-100 text-center">
+                <div className="w-12 h-12 rounded-full bg-primary/10 text-primary font-bold text-xl flex items-center justify-center mx-auto mb-2">
+                  {shopName.charAt(0).toUpperCase()}
+                </div>
+                <p className="text-sm font-semibold text-slate-900 truncate">{shopName}</p>
+                <p className="text-xs text-slate-400">Free Plan</p>
+              </div>
+              <nav className="p-2 space-y-0.5">
+                {SECTIONS.map(s => (
+                  <button key={s.id} onClick={() => setActiveSection(s.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                      ${activeSection === s.id ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
+                    <s.icon className="w-4 h-4 flex-shrink-0" />
+                    <span className="flex-1 text-left">{s.label}</span>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-30" />
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </aside>
+
+          {/* Content */}
+          <section className="flex-1 space-y-6">
+            {activeSection === 'store' && (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+                <h2 className="text-base font-bold text-slate-900 mb-1">Store Connection</h2>
+                <p className="text-sm text-slate-400 mb-8">Your connected Shopify store.</p>
+                <div className="space-y-0 divide-y divide-slate-100">
+                  {[
+                    { label: 'Store Domain', value: shop || 'Not connected' },
+                    { label: 'Store Name',   value: shopName || '—' },
+                    { label: 'Platform',     value: 'Shopify' },
+                    { label: 'Plan',         value: 'Free' },
+                    { label: 'Status',       value: shop ? 'Connected ✓' : 'Disconnected' },
+                  ].map(item => (
+                    <div key={item.label} className="py-5 flex items-center justify-between">
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">{item.label}</p>
+                        <p className="text-sm font-semibold text-slate-900 mt-1">{item.value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 flex gap-3 pt-4 border-t border-slate-100">
+                  {shop && (
+                    <a href={`https://${shop}/admin`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+                      <ExternalLink className="w-4 h-4" /> Open Shopify Admin
+                    </a>
+                  )}
+                  <button onClick={() => { localStorage.clear(); navigate('/onboarding') }}
+                    className="px-4 py-2 bg-red-50 border border-red-100 rounded-lg text-sm font-medium text-red-600 hover:bg-red-100 transition-colors">
+                    Disconnect Store
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'ai' && (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+                <h2 className="text-base font-bold text-slate-900 mb-1">AI Settings</h2>
+                <p className="text-sm text-slate-400 mb-8">Configure AI behavior for your store.</p>
+                <div className="divide-y divide-slate-100">
+                  {[
+                    { key: 'autoApplyFixes',    label: 'Auto-Apply Safe Fixes',  desc: 'Automatically apply low-risk AI fixes without confirmation' },
+                    { key: 'aiEmailGen',         label: 'AI Email Generation',    desc: 'Use AI to write email campaign content' },
+                    { key: 'priceOptimizer',     label: 'Price Optimization',     desc: 'Allow AI to suggest price changes based on demand' },
+                    { key: 'dailyAutoAnalysis',  label: 'Daily Auto-Analysis',    desc: 'Run automatic store analysis every 24 hours' },
+                  ].map(s => (
+                    <div key={s.key} className="py-5 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{s.label}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{s.desc}</p>
+                      </div>
+                      <button onClick={() => toggleAiSetting(s.key)}
+                        className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${aiSettings[s.key] ? 'bg-primary' : 'bg-slate-200'}`}>
+                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${aiSettings[s.key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-400 mt-6 pt-4 border-t border-slate-100">Settings are saved locally and applied on next action.</p>
+              </div>
+            )}
+
+            {activeSection === 'account' && (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+                <h2 className="text-base font-bold text-slate-900 mb-1">Account</h2>
+                <p className="text-sm text-slate-400 mb-8">Your subscription and usage.</p>
+                <div className="divide-y divide-slate-100">
+                  {[
+                    { label: 'Current Plan',      value: 'Free Plan' },
+                    { label: 'AI Actions Used',   value: '0 / 10 this month' },
+                    { label: 'Syncs',             value: 'Unlimited' },
+                    { label: 'Products Tracked',  value: 'Up to 100' },
+                  ].map(item => (
+                    <div key={item.label} className="py-5">
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">{item.label}</p>
+                      <p className="text-sm font-semibold text-slate-900 mt-1">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <button onClick={() => navigate('/pricing')}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm">
+                    <Zap className="w-4 h-4" /> Upgrade Plan
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'notifications' && (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+                <h2 className="text-base font-bold text-slate-900 mb-1">Notifications</h2>
+                <p className="text-sm text-slate-400 mb-8">Manage how you receive updates.</p>
+                <div className="divide-y divide-slate-100">
+                  {[
+                    { key: 'emailAlerts',      label: 'Email Alerts',        desc: 'Get email notifications for important updates' },
+                    { key: 'weeklyReport',     label: 'Weekly Report',       desc: 'Receive weekly store health report' },
+                    { key: 'fixNotifications', label: 'Fix Notifications',   desc: 'Alert when AI finds issues to fix' },
+                    { key: 'campaignUpdates',  label: 'Campaign Updates',    desc: 'Notify about ad campaign performance' },
+                  ].map(s => (
+                    <div key={s.key} className="py-5 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{s.label}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{s.desc}</p>
+                      </div>
+                      <button onClick={() => toggleAiSetting(s.key)}
+                        className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${aiSettings[s.key] ? 'bg-blue-500' : 'bg-slate-200'}`}>
+                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${aiSettings[s.key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'security' && (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+                <h2 className="text-base font-bold text-slate-900 mb-1">Security</h2>
+                <p className="text-sm text-slate-400 mb-8">Manage your account security.</p>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-4">API Tokens</h3>
+                    <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+                      <p className="text-xs text-slate-500 mb-3">Your Shopify API token is securely stored and never exposed.</p>
+                      <button className="text-xs font-semibold text-blue-600 hover:text-blue-700">Regenerate Token</button>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-4">Active Sessions</h3>
+                    <div className="bg-slate-50 rounded-lg p-4 border border-slate-100 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Current Session</p>
+                        <p className="text-xs text-slate-500 mt-1">This browser · Last active now</p>
+                      </div>
+                      <p className="text-xs font-bold text-emerald-600">Active</p>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-4">Danger Zone</h3>
+                    <button className="px-4 py-2 bg-red-50 border border-red-100 rounded-lg text-sm font-semibold text-red-600 hover:bg-red-100">
+                      Delete Account & All Data
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      </main>
+    </div>
+  );
+}

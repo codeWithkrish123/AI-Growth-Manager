@@ -472,10 +472,10 @@ export const FixActionModel = {
     }
     return [];
   },
-  deleteMany: async (query) => {
-    if (query.merchantId) {
+  deleteMany: async (queryObj) => {
+    if (queryObj.merchantId) {
       const sql = 'DELETE FROM fix_actions WHERE merchant_id = $1';
-      const result = await query(sql, [query.merchantId]);
+      const result = await query(sql, [queryObj.merchantId]);
       return { deletedCount: result.rowCount };
     }
     return { deletedCount: 0 };
@@ -508,10 +508,10 @@ export const HealthHistoryModel = {
     }
     return [];
   },
-  deleteMany: async (query) => {
-    if (query.merchantId) {
+  deleteMany: async (queryObj) => {
+    if (queryObj.merchantId) {
       const sql = 'DELETE FROM health_history WHERE merchant_id = $1';
-      const result = await query(sql, [query.merchantId]);
+      const result = await query(sql, [queryObj.merchantId]);
       return { deletedCount: result.rowCount };
     }
     return { deletedCount: 0 };
@@ -525,7 +525,8 @@ export const WebhookEventModel = {
       return await WebhookEvent.findByShopifyWebhookId(query.shopifyWebhookId);
     }
     return null;
-  }
+  },
+  markProcessed: async (id) => await WebhookEvent.markProcessed(id)
 };
 
 export const AiCallLogModel = {

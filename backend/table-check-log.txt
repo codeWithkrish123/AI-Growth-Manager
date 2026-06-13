@@ -1,0 +1,30 @@
+[2026-06-09T14:57:23.546Z] Starting table check...
+[2026-06-09T14:57:24.152Z] Existing tables: ["merchants","store_snapshots","health_history","ai_analyses","fix_actions","sync_jobs","ai_call_logs","webhook_events","email_campaigns","email_logs"]
+[2026-06-09T14:57:24.156Z] ✅ store_snapshots table exists
+[2026-06-09T14:57:24.163Z] ✅ ai_analyses table exists
+[2026-06-09T14:57:24.165Z] ✅ sync_jobs table exists
+[2026-06-09T14:57:24.166Z] Table check completed
+[2026-06-09T14:58:47.502Z] Starting table check...
+[2026-06-09T14:58:47.675Z] Existing tables: ["merchants","store_snapshots","health_history","ai_analyses","fix_actions","sync_jobs","ai_call_logs","webhook_events","email_campaigns","seo_keywords","email_logs","seo_audits","seo_issues","seo_optimizations","seo_pagespeed_history","seo_competitors","seo_schema_markup","ad_accounts","ad_campaigns","ad_performance","ad_suggestions"]
+[2026-06-09T14:58:47.679Z] ✅ store_snapshots table exists
+[2026-06-09T14:58:47.685Z] ✅ ai_analyses table exists
+[2026-06-09T14:58:47.693Z] ✅ sync_jobs table exists
+[2026-06-09T14:58:47.696Z] Table check completed
+[2026-06-09T15:19:34.347Z] Starting table check...
+[2026-06-09T15:19:34.433Z] Existing tables: ["merchants","store_snapshots","health_history","ai_analyses","fix_actions","sync_jobs","ai_call_logs","webhook_events","email_campaigns","seo_keywords","email_logs","seo_audits","seo_issues","seo_optimizations","seo_pagespeed_history","seo_competitors","seo_schema_markup","ad_accounts","ad_campaigns","ad_performance","ad_suggestions"]
+[2026-06-09T15:19:34.438Z] ✅ store_snapshots table exists
+[2026-06-09T15:19:34.440Z] ✅ ai_analyses table exists
+[2026-06-09T15:19:34.441Z] ✅ sync_jobs table exists
+[2026-06-09T15:19:34.443Z] Table check completed
+[2026-06-09T19:02:17.470Z] Starting table check...
+[2026-06-09T19:02:17.834Z] Existing tables: ["merchants","store_snapshots","health_history","ai_analyses","fix_actions","sync_jobs","ai_call_logs","webhook_events","email_campaigns","seo_keywords","email_logs","seo_audits","seo_issues","seo_optimizations","seo_pagespeed_history","seo_competitors","seo_schema_markup","ad_accounts","ad_campaigns","ad_performance","ad_suggestions"]
+[2026-06-09T19:02:17.835Z] ✅ store_snapshots table exists
+[2026-06-09T19:02:17.836Z] ✅ ai_analyses table exists
+[2026-06-09T19:02:17.837Z] ✅ sync_jobs table exists
+[2026-06-09T19:02:17.837Z] Table check completed
+[2026-06-10T05:51:33.519Z] Starting table check...
+[2026-06-10T05:51:44.693Z] Existing tables: ["merchants","store_snapshots","health_history","ai_analyses","fix_actions","sync_jobs","ai_call_logs","webhook_events","email_campaigns","seo_keywords","email_logs","seo_audits","seo_issues","seo_optimizations","seo_pagespeed_history","seo_competitors","seo_schema_markup","ad_accounts","ad_campaigns","ad_performance","ad_suggestions"]
+[2026-06-10T05:51:44.749Z] ✅ store_snapshots table exists
+[2026-06-10T05:51:44.796Z] ✅ ai_analyses table exists
+[2026-06-10T05:51:44.864Z] ✅ sync_jobs table exists
+[2026-06-10T05:51:44.912Z] Table check completed

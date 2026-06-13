@@ -63,3 +63,48 @@ Return ONLY this JSON structure:
 
   return { systemPrompt, userPrompt };
 }
+
+/**
+ * Builds prompt for SEO Audit
+ */
+export function buildSeoAuditPrompt({ products, shopInfo }) {
+  const systemPrompt = `You are an expert SEO Specialist for Shopify.
+Analyze the provided product data and identify technical SEO issues.
+Respond with valid JSON only.`;
+
+  const userPrompt = `Analyze SEO for these Shopify store products:
+${products.map(p => `- ${p.title}: ${p.body_html?.substring(0, 100) || 'NO DESCRIPTION'}`).join('\n')}
+
+Return JSON:
+{
+  "overallScore": 0-100,
+  "metaScore": 0-100,
+  "contentScore": 0-100,
+  "structureScore": 0-100,
+  "issues": [
+    { "severity": "critical|warning|info", "category": "meta|image|content|speed|mobile", "title": "...", "description": "...", "fixSuggestion": "..." }
+  ]
+}`;
+
+  return { systemPrompt, userPrompt };
+}
+
+/**
+ * Builds prompt for Ads Generation
+ */
+export function buildAdsCreativePrompt({ products, platform }) {
+  const systemPrompt = `You are a high-converting Ad Copywriter for ${platform}.
+Generate headlines and descriptions for the provided products.
+Respond with valid JSON only.`;
+
+  const userPrompt = `Generate ads for:
+${products.map(p => `- ${p.title}: ${p.body_html?.substring(0, 100) || ''}`).join('\n')}
+
+Return JSON:
+{
+  "headlines": ["...", "..."],
+  "descriptions": ["...", "..."]
+}`;
+
+  return { systemPrompt, userPrompt };
+}

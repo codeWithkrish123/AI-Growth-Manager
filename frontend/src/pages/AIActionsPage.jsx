@@ -1,180 +1,218 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Zap, CheckCircle2, Clock, Play, ArrowRight, Settings } from 'lucide-react';
-import { Link } from 'react-router-dom';
-// import { aiAPI } from '../services';
+import { Sparkles, CheckCircle2, RefreshCw, Zap, AlertCircle, Menu } from 'lucide-react'
+import Sidebar from '../components/Sidebar'
+import { dashboardAPI, errMsg } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
-const AIActionsPage = () => {
-    const [actions, setActions] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [shop] = useState(localStorage.getItem('currentShop') || 'demo-shop.myshopify.com');
+export default function AIActionsPage() {
+  const [problems,    setProblems]    = useState([]);
+  const [fixes,       setFixes]       = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [applying,    setApplying]    = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDark,      setIsDark]      = useState(() => document.documentElement.classList.contains('dark'));
+  const [toast,       setToast]       = useState(null);
+  const navigate = useNavigate();
+  const shop = localStorage.getItem('currentShop') || '';
 
-    useEffect(() => {
-        fetchAIActions();
-    }, [shop]);
+  const toggleDark = () => { const n = !isDark; setIsDark(n); document.documentElement.classList.toggle('dark', n); localStorage.setItem('theme', n ? 'dark' : 'light'); };
+  const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
 
-    const fetchAIActions = async () => {
-        try {
-            setLoading(true);
-            const response = await aiAPI.getAIActions();
-            setActions(response.data || [
-                { id: 1, type: 'Optimization', title: 'A/B Test Product Descriptions', status: 'In Progress', impact: 'Medium', time: 'Started 2h ago' },
-                { id: 2, type: 'Security', title: 'Encryption Protocol Update', status: 'Completed', impact: 'High', time: 'Yesterday' },
-                { id: 3, type: 'Revenue', title: 'Dynamic Pricing Adjustment', status: 'Running', impact: 'High', time: 'Continuous' },
-                { id: 4, type: 'Growth', title: 'SEO Keyword Tagging', status: 'Scheduled', impact: 'Low', time: 'Starting in 4h' },
-            ]);
-        } catch (error) {
-            console.error('Error fetching AI actions:', error);
-            // Use demo data as fallback
-            setActions([
-                { id: 1, type: 'Optimization', title: 'A/B Test Product Descriptions', status: 'In Progress', impact: 'Medium', time: 'Started 2h ago' },
-                { id: 2, type: 'Security', title: 'Encryption Protocol Update', status: 'Completed', impact: 'High', time: 'Yesterday' },
-                { id: 3, type: 'Revenue', title: 'Dynamic Pricing Adjustment', status: 'Running', impact: 'High', time: 'Continuous' },
-                { id: 4, type: 'Growth', title: 'SEO Keyword Tagging', status: 'Scheduled', impact: 'Low', time: 'Starting in 4h' },
-            ]);
-        } finally {
-            setLoading(false);
-        }
-    };
+  useEffect(() => { if (shop) fetchAll(); else navigate('/onboarding'); }, [shop]);
 
-    const executeAction = async (actionId) => {
-        try {
-            await aiAPI.executeAIAction({ actionId, shop });
-            // Refresh actions after execution
-            fetchAIActions();
-        } catch (error) {
-            console.error('Error executing AI action:', error);
-        }
-    };
+  const fetchAll = async () => {
+    try {
+      setLoading(true);
+      const [analysisRes, fixesRes] = await Promise.allSettled([
+        dashboardAPI.getLatestAnalysis(shop),
+        dashboardAPI.getFixes(shop),
+      ]);
+      if (analysisRes.status === 'fulfilled') {
+        const d = analysisRes.value.data?.data || analysisRes.value.data;
+        setProblems(d?.problems || []);
+      }
+      if (fixesRes.status === 'fulfilled') {
+        const d = fixesRes.value.data?.data || fixesRes.value.data || [];
+        setFixes(Array.isArray(d) ? d : []);
+      }
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  };
 
-    return (
-        <div className="min-h-screen bg-slate-50 flex">
-            {/* Sidebar Placeholder */}
-            <aside className="w-64 border-r border-slate-200 bg-white flex flex-col p-6 fixed h-screen z-20">
-                <Link to="/dashboard" className="flex items-center gap-3 mb-10 px-2">
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                        <Zap className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="font-bold text-lg text-slate-900">GrowthAI</span>
-                </Link>
-                <nav className="flex-1 space-y-1">
-                    <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 transition-all">
-                        <span className="material-symbols-outlined">dashboard</span>
-                        <span className="text-sm font-bold">Overview</span>
-                    </Link>
-                    <Link to="/health" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 transition-all">
-                        <span className="material-symbols-outlined">health_metrics</span>
-                        <span className="text-sm font-bold">Health Score</span>
-                    </Link>
-                    <Link to="/products" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 transition-all">
-                        <span className="material-symbols-outlined">inventory_2</span>
-                        <span className="text-sm font-bold">Products</span>
-                    </Link>
-                    <Link to="/ai-actions" className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-primary/5 text-primary transition-all">
-                        <span className="material-symbols-outlined fill">smart_toy</span>
-                        <span className="text-sm font-bold">AI Actions</span>
-                    </Link>
-                </nav>
-            </aside>
+  const handleApplyFix = async (problem) => {
+    if (!problem.payload) return showToast('Run Analyze on Dashboard first to generate fix data.', 'error');
+    try {
+      setApplying(problem.id);
+      await dashboardAPI.applyFix(shop, { problemId: problem.id, fixType: problem.fixType, payload: problem.payload });
+      showToast('✅ Fix applied to your Shopify store!');
+      fetchAll();
+    } catch (e) {
+      showToast('Fix failed: ' + errMsg(e), 'error');
+    } finally { setApplying(null); }
+  };
 
-            <main className="ml-64 flex-1 p-10">
-                <header className="flex items-center justify-between mb-10">
-                    <div>
-                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">AI Actions</h2>
-                        <p className="text-slate-500 text-sm font-medium mt-1">Direct control over autonomous optimization tasks.</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 bg-white rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">
-                            <Settings className="w-4 h-4" />
-                            Auto-Pilot Settings
-                        </button>
-                        <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all">
-                            <Play className="w-4 h-4 fill-white" />
-                            Run New Scan
-                        </button>
-                    </div>
-                </header>
+  const severityBadge = (s) => {
+    if (s === 'critical' || s === 'high')   return 'badge-red';
+    if (s === 'medium' || s === 'warning') return 'badge-amber';
+    return 'badge-blue';
+  };
 
-                <div className="grid grid-cols-12 gap-6">
-                    {/* Active Jobs */}
-                    <div className="col-span-8 space-y-4">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Live Action Feed</h3>
-                        {actions.map((a) => (
-                            <motion.div key={a.id} whileHover={{ y: -2 }} className="bg-white p-6 rounded-[24px] border border-slate-200 shadow-sm flex items-center justify-between group cursor-pointer hover:border-primary/30 transition-all">
-                                <div className="flex items-center gap-5">
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${a.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' :
-                                            a.status === 'In Progress' ? 'bg-primary/10 text-primary' : 'bg-slate-50 text-slate-400'
-                                        }`}>
-                                        {a.status === 'Completed' ? <CheckCircle2 className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-0.5 rounded">AI {a.type}</span>
-                                            <h4 className="text-base font-bold text-slate-900">{a.title}</h4>
-                                        </div>
-                                        <p className="text-xs text-slate-500 font-medium">{a.time} • Impact: <span className="text-primary font-bold">{a.impact}</span></p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="text-right">
-                                        <span className={`text-[10px] font-black uppercase tracking-widest ${a.status === 'Completed' ? 'text-emerald-500' : 'text-primary'}`}>
-                                            {a.status}
-                                        </span>
-                                        {a.status === 'In Progress' && (
-                                            <div className="w-24 h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
-                                                <motion.div
-                                                    animate={{ x: [-100, 100] }}
-                                                    transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                                                    className="w-full h-full bg-primary"
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
+  const appliedCount = fixes.filter(f => f.status === 'applied' || f.status === 'completed').length;
+  const autoFixable  = problems.filter(p => p.fixType && p.fixType !== 'none' && p.payload).length;
 
-                    {/* Stats Sidebar */}
-                    <div className="col-span-4 space-y-6">
-                        <div className="bg-slate-900 text-white p-8 rounded-[32px] shadow-xl overflow-hidden relative group">
-                            <Sparkles className="absolute top-6 right-6 w-6 h-6 text-white/20 group-hover:text-primary transition-colors" />
-                            <h3 className="text-xl font-bold mb-2">AI Efficiency</h3>
-                            <p className="text-slate-400 text-sm mb-6 font-medium">Auto-pilot has saved you 12h of manual work this week.</p>
-                            <div className="text-4xl font-black mb-1">98.2%</div>
-                            <div className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Success Rate</div>
-                            <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
-                        </div>
+  return (
+    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--c-bg)' }}>
+      <Sidebar active="ai" shop={shop} onDarkModeToggle={toggleDark} isDark={isDark}
+        mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
 
-                        <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm">
-                            <h3 className="text-slate-900 font-bold mb-4">Total Tokens Used</h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <div className="flex justify-between text-xs font-bold mb-2">
-                                        <span className="text-slate-500">Analysis</span>
-                                        <span className="text-slate-900">12k / 50k</span>
-                                    </div>
-                                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                                        <div className="w-[24%] h-full bg-primary" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs font-bold mb-2">
-                                        <span className="text-slate-500">Generation</span>
-                                        <span className="text-slate-900">42k / 100k</span>
-                                    </div>
-                                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                                        <div className="w-[42%] h-full bg-indigo-500" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-lg text-white text-sm font-semibold shadow-xl ${toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500'}`}>
+          {toast.msg}
         </div>
-    );
-};
+      )}
 
-export default AIActionsPage;
+      <main className="flex-1 lg:ml-[var(--c-sidebar-w)] overflow-y-auto scrollbar-hide">
+
+        {/* Header */}
+        <div className="sticky top-0 z-20 flex items-center justify-between px-7 py-4 border-b backdrop-blur-sm"
+          style={{ borderColor: 'var(--c-border)', background: 'var(--c-bg)' }}>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden" style={{ color: 'var(--c-text-muted)' }}>
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-lg font-black flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
+                <Zap className="w-5 h-5 text-amber-400" />
+                AI Actions
+              </h1>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-muted)' }}>
+                AI-detected issues with one-click fixes for your store.
+              </p>
+            </div>
+          </div>
+          <button onClick={fetchAll} className="btn-ghost text-xs">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+        </div>
+
+        <div className="px-7 py-6">
+          <div className="grid grid-cols-12 gap-5">
+
+            {/* Main feed */}
+            <div className="col-span-12 lg:col-span-8 space-y-3">
+              <p className="section-title font-semibold uppercase tracking-widest text-xs" style={{ color: 'var(--c-text-muted)' }}>
+                Live Action Feed {problems.length > 0 && `· ${problems.length} issue${problems.length > 1 ? 's' : ''} found`}
+              </p>
+
+              {loading ? (
+                <div className="card p-12 flex items-center justify-center">
+                  <RefreshCw className="w-6 h-6 animate-spin" style={{ color: 'var(--c-primary)' }} />
+                </div>
+              ) : problems.length === 0 ? (
+                <div className="card p-10 text-center">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+                  <p className="text-sm font-semibold mb-1" style={{ color: 'var(--c-text)' }}>All Good!</p>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-muted)' }}>
+                    No issues detected. Go to Dashboard and click <strong>Analyze</strong> to generate AI suggestions.
+                  </p>
+                  <button onClick={() => navigate(`/dashboard/${shop}`)} className="btn-primary text-xs">
+                    Go to Dashboard →
+                  </button>
+                </div>
+              ) : (
+                problems.map((p, i) => (
+                  <motion.div key={p.id || i}
+                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                    className="card p-5 hover:shadow-md transition-all">
+                    <div className="flex items-start gap-4">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 badge ${severityBadge(p.severity)}`}
+                        style={{ padding: 0 }}>
+                        <AlertCircle className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className={`badge ${severityBadge(p.severity)}`}>{p.severity}</span>
+                          <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{p.title}</span>
+                        </div>
+                        <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-muted)' }}>{p.description}</p>
+                        {p.potentialRevenue > 0 && (
+                          <p className="text-xs font-semibold text-emerald-600 mt-1.5">
+                            💰 Potential: +₹{Math.round(p.potentialRevenue).toLocaleString()} estimated revenue
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex-shrink-0">
+                        {p.fixType && p.fixType !== 'none' && p.payload ? (
+                          <button onClick={() => handleApplyFix(p)} disabled={applying === p.id} className="btn-primary text-xs">
+                            {applying === p.id
+                              ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Applying…</>
+                              : <><Zap className="w-3.5 h-3.5" /> Apply Fix</>
+                            }
+                          </button>
+                        ) : (
+                          <span className="badge badge-indigo">Manual</span>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+
+              {/* Fix history */}
+              {fixes.length > 0 && (
+                <div className="mt-4">
+                  <p className="section-title font-semibold uppercase tracking-widest text-xs mb-3" style={{ color: 'var(--c-text-muted)' }}>
+                    Fix History ({fixes.length})
+                  </p>
+                  <div className="card overflow-hidden divide-y" style={{ '--divide-color': 'var(--c-border-light)' }}>
+                    {fixes.slice(0, 10).map((f, i) => (
+                      <div key={f.id || i} className="flex items-center gap-4 px-5 py-3">
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${f.status === 'applied' || f.status === 'completed' ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold truncate" style={{ color: 'var(--c-text)' }}>{f.fixType || f.problemId || 'Fix'}</p>
+                          <p className="text-xs" style={{ color: 'var(--c-text-subtle)' }}>{f.createdAt ? new Date(f.createdAt).toLocaleDateString() : ''}</p>
+                        </div>
+                        <span className={`badge ${f.status === 'applied' || f.status === 'completed' ? 'badge-green' : 'badge-amber'}`}>
+                          {f.status || 'pending'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar stats */}
+            <div className="col-span-12 lg:col-span-4 space-y-4">
+              {/* Dark card — same as PriceOptimizer style */}
+              <div className="rounded-xl p-6 relative overflow-hidden" style={{ background: 'var(--c-sidebar-bg)' }}>
+                <Sparkles className="absolute top-4 right-4 w-5 h-5 opacity-20 text-white" />
+                <p className="text-sm font-semibold text-white mb-1">AI Efficiency</p>
+                <p className="text-xs mb-5" style={{ color: 'var(--c-sidebar-text)' }}>Automated fixes save hours of manual work.</p>
+                <div className="text-4xl font-black text-white mb-1">98.2%</div>
+                <div className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">Success Rate</div>
+              </div>
+
+              <div className="card p-5">
+                <p className="section-title mb-4">Summary</p>
+                {[
+                  { label: 'Issues Found',  value: problems.length,                 color: problems.length > 0 ? 'text-red-500' : '' },
+                  { label: 'Auto-Fixable',  value: autoFixable,                     color: 'text-primary' },
+                  { label: 'Applied Fixes', value: appliedCount,                    color: 'text-emerald-600' },
+                  { label: 'Est. Revenue',  value: '₹' + Math.round(problems.reduce((t,p) => t+(p.potentialRevenue||0), 0)).toLocaleString(), color: 'text-emerald-600' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="flex justify-between items-center py-2 border-b last:border-0"
+                    style={{ borderColor: 'var(--c-border-light)' }}>
+                    <span className="text-xs" style={{ color: 'var(--c-text-secondary)' }}>{label}</span>
+                    <span className={`text-sm font-bold ${color}`} style={!color ? { color: 'var(--c-text)' } : {}}>{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

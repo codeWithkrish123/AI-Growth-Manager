@@ -84,10 +84,10 @@ export async function previewFix(fixActionId, accessToken) {
     if (fixType === 'update_product' || fixType === 'update_seo') {
       const productId = payload.product.id;
 
-      const currentProduct = await client.get({
-      path: `products/${productId}`,
-     query: { fields: 'id,title,body_html,tags,variants' }
-});client.get({ path: `products/${productId}` });
+            const currentProduct = await client.get({
+        path: `products/${productId}`,
+        query: { fields: 'id,title,body_html,tags,variants' }
+      });
 
       before = {
         id: currentProduct.body.product.id,

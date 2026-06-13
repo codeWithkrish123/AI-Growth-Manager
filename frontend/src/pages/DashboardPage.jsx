@@ -1,568 +1,481 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, TrendingUp, AlertCircle, CheckCircle, Clock, Target, Zap, RefreshCw } from 'lucide-react'
+import { RefreshCw, Menu, Sparkles, TrendingUp, Bell, Search, Calendar } from 'lucide-react'
+import Sidebar from '../components/Sidebar'
+import { dashboardAPI } from '../services/api'
+
+// Sparkline SVG
+function Sparkline({ color = '#22c55e', up = true }) {
+  const path = up
+    ? 'M0 35 Q 20 38, 40 28 T 80 18 T 120 8'
+    : 'M0 12 Q 20 10, 40 18 T 80 28 T 120 32'
+  return (
+    <svg className="h-8 w-24" viewBox="0 0 120 40" preserveAspectRatio="none">
+      <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+// Animated health score ring
+function HealthRing({ score }) {
+  const r = 56, circ = 2 * Math.PI * r
+  const offset = circ - (circ * score) / 100
+  return (
+    <div className="relative w-36 h-36 flex-shrink-0">
+      <svg className="w-36 h-36 -rotate-90" viewBox="0 0 128 128">
+        <circle cx="64" cy="64" r={r} fill="none" stroke="#e2e8f0" strokeWidth="10" />
+        <motion.circle cx="64" cy="64" r={r} fill="none" stroke="#2563eb" strokeWidth="10"
+          strokeLinecap="round" strokeDasharray={circ}
+          initial={{ strokeDashoffset: circ }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1.4, ease: 'easeOut' }} />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <motion.span className="text-4xl font-black text-slate-900"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+          {score}
+        </motion.span>
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          {score >= 80 ? 'GOOD' : score >= 60 ? 'FAIR' : 'POOR'}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// Revenue chart using real health history data
+function RevenueChart({ data }) {
+  if (!data || data.length < 2) return (
+    <div className="h-64 flex items-center justify-center text-slate-300">
+      <div className="text-center">
+        <TrendingUp className="w-10 h-10 mx-auto mb-2" />
+        <p className="text-sm">Sync your store to see revenue data</p>
+      </div>
+    </div>
+  )
+  const H = 200, W = 600
+  const scores = data.map(d => d.healthScore || d.score || 0)
+  const maxV = Math.max(...scores, 1)
+  const pts = scores.map((v, i) => {
+    const x = (i / (scores.length - 1)) * W
+    const y = H - (v / maxV) * (H * 0.85) - H * 0.05
+    return `${x},${y}`
+  }).join(' ')
+  // midpoint for tooltip
+  const mid = Math.floor(scores.length / 2)
+  const midX = (mid / (scores.length - 1)) * W
+  const midY = H - (scores[mid] / maxV) * (H * 0.85) - H * 0.05
+
+  return (
+    <div className="relative h-64">
+      {/* Y labels */}
+      <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between text-xs text-slate-400 pr-2">
+        {['100', '75', '50', '25', '0'].map(l => <span key={l}>{l}</span>)}
+      </div>
+      <svg className="absolute left-8 right-0 top-0 bottom-6" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="revGrad" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.12" />
+            <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {/* Dotted baseline */}
+        <polyline fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeDasharray="6,4"
+          points={`0,${H * 0.7} ${W},${H * 0.4}`} />
+        {/* Main area */}
+        <polygon fill="url(#revGrad)" points={`0,${H} ${pts} ${W},${H}`} />
+        <polyline fill="none" stroke="#2563eb" strokeWidth="2.5"
+          points={pts} strokeLinecap="round" strokeLinejoin="round" />
+        {/* Midpoint tooltip dot */}
+        <circle cx={midX} cy={midY} r="5" fill="#1e40af" stroke="white" strokeWidth="2" />
+        {/* Tooltip */}
+        <rect x={midX - 36} y={midY - 28} width="72" height="22" rx="5" fill="#1e293b" />
+        <text x={midX} y={midY - 13} textAnchor="middle" fill="white" fontSize="11" fontWeight="700">
+          Score: {scores[mid]}
+        </text>
+      </svg>
+      {/* X labels */}
+      <div className="absolute bottom-0 left-8 right-0 flex justify-between text-xs text-slate-400">
+        {data.filter((_, i, a) => [0, Math.floor(a.length/5), Math.floor(2*a.length/5), Math.floor(3*a.length/5), Math.floor(4*a.length/5), a.length-1].includes(i))
+          .map((d, i) => <span key={i}>{d.date ? new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>)}
+      </div>
+    </div>
+  )
+}
 
 export default function DashboardPage() {
-    const { shop } = useParams()
-    const navigate = useNavigate()
-    const [loading, setLoading] = useState(true)
-    const [syncing, setSyncing] = useState(false)
-    const [syncStatus, setSyncStatus] = useState('')
-    const [analyzing, setAnalyzing] = useState(false)
-    const [analyzeStatus, setAnalyzeStatus] = useState('')
-    const [applyingFix, setApplyingFix] = useState(false)
-    const [fixStatus, setFixStatus] = useState('')
-    const [toast, setToast] = useState(null)
-    const [dashboardData, setDashboardData] = useState(null)
+  const { shop } = useParams()
+  const navigate  = useNavigate()
+  const [loading,       setLoading]       = useState(true)
+  const [syncing,       setSyncing]       = useState(false)
+  const [analyzing,     setAnalyzing]     = useState(false)
+  const [dashData,      setDashData]      = useState(null)
+  const [aiActions,     setAiActions]     = useState([])
+  const [historyData,   setHistoryData]   = useState([])
+  const [sidebarOpen,   setSidebarOpen]   = useState(false)
+  const [isDark,        setIsDark]        = useState(() => document.documentElement.classList.contains('dark'))
+  const [lastSynced,    setLastSynced]    = useState(null)
+  const [toast,         setToast]         = useState(null)
 
-    useEffect(() => {
-        document.title = 'Dashboard – AI Growth Manager'
-        
-        if (!shop) {
-            navigate('/signin')
-            return
-        }
+  const toggleDark = () => { const n = !isDark; setIsDark(n); document.documentElement.classList.toggle('dark', n); localStorage.setItem('theme', n ? 'dark' : 'light') }
+  const showToast  = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3500) }
 
-        // Set shop in localStorage for future access
-        localStorage.setItem('currentShop', shop)
+  useEffect(() => {
+    document.title = 'Dashboard – AI Growth Manager'
+    if (!shop) { navigate('/onboarding'); return }
+    localStorage.setItem('currentShop', shop)
+    fetchAll()
 
-        fetchDashboardData()
-    }, [shop, navigate])
-
-    const fetchDashboardData = async () => {
-        try {
-            setLoading(true)
-            const response = await fetch(`http://localhost:3001/api/${shop}/dashboard`)
-            
-            if (!response.ok) {
-                throw new Error('Failed to fetch dashboard data')
-            }
-            
-            const data = await response.json()
-            if (data.success) {
-                setDashboardData(data.data)
-                console.log('Dashboard data loaded:', {
-                    problems: data.data.analysis?.problems?.length || 0,
-                    healthScore: data.data.healthScore
-                })
-            }
-        } catch (error) {
-            console.error('Dashboard fetch error:', error)
-        } finally {
-            setLoading(false)
-        }
+    // Auto-refresh once after 4s if this is a fresh connect (success=true in URL)
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('success') === 'true') {
+      const t = setTimeout(() => fetchAll(), 4000)
+      return () => clearTimeout(t)
     }
+  }, [shop])
 
-    const showToast = (message, type = 'info') => {
-        setToast({ message, type })
-        setTimeout(() => setToast(null), 3000)
+  const fetchAll = async () => {
+    setLoading(true)
+    const [dashRes, histRes, fixRes] = await Promise.allSettled([
+      dashboardAPI.getDashboardData(shop),
+      dashboardAPI.getHealthHistory(shop),
+      dashboardAPI.getFixes(shop),
+    ])
+    if (dashRes.status === 'fulfilled') {
+      const d = dashRes.value.data?.data || dashRes.value.data
+      setDashData(d)
+      setLastSynced(new Date().toLocaleTimeString())
+      if (d?.tokenExpired) showToast('⚠️ Token expired — showing cached data. Reconnect store.', 'error')
     }
-
-    const handleSync = async () => {
-        try {
-            setSyncing(true)
-            setSyncStatus('Connecting to Shopify...')
-            const response = await fetch(`http://localhost:3001/api/${shop}/sync`, {
-                method: 'POST',
-            })
-            
-            if (!response.ok) {
-                throw new Error('Failed to trigger sync')
-            }
-            
-            const data = await response.json()
-            if (data.success) {
-                setSyncStatus('Fetching store data from Shopify...')
-                // Poll for sync status
-                pollSyncStatus(data.data.syncJobId)
-            }
-        } catch (error) {
-            console.error('Sync error:', error)
-            setSyncing(false)
-            setSyncStatus('')
-            showToast('Sync failed. Please try again.', 'error')
-        }
+    if (histRes.status === 'fulfilled') {
+      const d = histRes.value.data?.data || histRes.value.data || []
+      setHistoryData(Array.isArray(d) ? d : [])
     }
-
-    const pollSyncStatus = async (syncJobId) => {
-        const interval = setInterval(async () => {
-            try {
-                const response = await fetch(`http://localhost:3001/api/${shop}/sync/${syncJobId}`)
-                const data = await response.json()
-                
-                if (data.success && (data.data.status === 'completed' || data.data.status === 'failed')) {
-                    clearInterval(interval)
-                    setSyncing(false)
-                    setSyncStatus('')
-                    await fetchDashboardData(true) // Force refresh after sync
-                    showToast('Sync completed successfully!', 'success')
-                }
-            } catch (error) {
-                console.error('Sync status poll error:', error)
-                clearInterval(interval)
-                setSyncing(false)
-                setSyncStatus('')
-                showToast('Sync failed. Please try again.', 'error')
-            }
-        }, 2000)
+    if (fixRes.status === 'fulfilled') {
+      const d = fixRes.value.data?.data || fixRes.value.data || []
+      setAiActions(Array.isArray(d) ? d.slice(0, 5) : [])
     }
+    setLoading(false)
+  }
 
-    const handleAnalyze = async () => {
-        try {
-            setAnalyzing(true)
-            setAnalyzeStatus('Connecting to AI engine...')
-            
-            const response = await fetch(`http://localhost:3001/api/${shop}/analyze`, {
-                method: 'POST',
-            })
-            
-            if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.error || 'Failed to trigger analysis')
-            }
-            
-            const data = await response.json()
-            if (data.success) {
-                setAnalyzeStatus('AI analysis running...')
-                // Poll for analysis completion
-                setTimeout(() => {
-                    setAnalyzing(false)
-                    setAnalyzeStatus('')
-                    fetchDashboardData()
-                    showToast('AI Analysis complete!', 'success')
-                }, 3000)
-            }
-        } catch (error) {
-            console.error('Analysis error:', error)
-            setAnalyzing(false)
-            setAnalyzeStatus('')
-            showToast('Analysis failed. Please try again.', 'error')
-        }
-    }
+  const handleSync = async () => {
+    try {
+      setSyncing(true)
+      await dashboardAPI.triggerSync(shop)
+      showToast('Sync started! Refreshing in 3s...')
+      setTimeout(() => { fetchAll(); setSyncing(false) }, 3000)
+    } catch { showToast('Sync failed', 'error'); setSyncing(false) }
+  }
 
-    const handleApplyFix = async (suggestion) => {
-        try {
-            if (!suggestion || !suggestion.payload) {
-                showToast('This fix has no data to apply. Run Analyze again.', 'error')
-                return
-            }
+  const handleAnalyze = async () => {
+    try {
+      setAnalyzing(true)
+      await dashboardAPI.triggerAnalysis(shop)
+      showToast('Analysis complete!')
+      await fetchAll()
+    } catch { showToast('Analysis failed', 'error') }
+    finally { setAnalyzing(false) }
+  }
 
-            setApplyingFix(true)
-            setFixStatus('Applying fix to your store...')
-            
-            const response = await fetch(`http://localhost:3001/api/${shop}/fix`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    problemId: suggestion.id,
-                    fixType: suggestion.fixType || 'update_product',
-                    payload: suggestion.payload,
-                }),
-            })
-            
-            const data = await response.json()
-            
-            if (!response.ok) {
-                throw new Error(data.error || data.message || 'Failed to apply fix')
-            }
-            
-            if (data.success || response.status === 200) {
-                setApplyingFix(false)
-                setFixStatus('')
-                await fetchDashboardData()
-                showToast('✅ Fix applied successfully! Your store has been updated in Shopify.', 'success')
-            } else {
-                throw new Error(data.message || 'Failed to apply fix')
-            }
-        } catch (error) {
-            console.error('Fix error:', error)
-            setApplyingFix(false)
-            setFixStatus('')
-            showToast(`Failed to apply fix: ${error.message}`, 'error')
-        }
-    }
+  const metrics    = dashData?.snapshot?.metrics || {}
+  const healthScore = dashData?.snapshot?.healthScore ?? dashData?.healthScore ?? 0
+  const problems   = dashData?.analysis?.problems || dashData?.snapshot?.problems || []
+  const shopName   = shop?.replace('.myshopify.com', '') || 'My Store'
+  const aiRevenue  = problems.reduce((t, p) => t + (parseFloat((p.impact || '').replace(/[^0-9.]/g, '')) || 0), 0)
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-slate-600">Loading your dashboard...</p>
-                </div>
-            </div>
-        )
-    }
+  const isFirstConnect = new URLSearchParams(window.location.search).get('success') === 'true'
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 relative">
-            {/* Sync Overlay */}
-            {syncing && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-                    <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 shadow-2xl">
-                        <div className="text-center">
-                            <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">Syncing Data</h3>
-                            <p className="text-slate-600">{syncStatus}</p>
-                        </div>
-                    </div>
-                </div>
-            )}
+  if (loading) return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+        {isFirstConnect && (
+          <p className="text-sm text-slate-500 font-medium">Setting up your store… syncing data</p>
+        )}
+      </div>
+    </div>
+  )
 
-            {/* Analyze Overlay */}
-            {analyzing && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-                    <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 shadow-2xl">
-                        <div className="text-center">
-                            <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">AI Analysis</h3>
-                            <p className="text-slate-600">{analyzeStatus}</p>
-                        </div>
-                    </div>
-                </div>
-            )}
+  return (
+    <div className="flex h-screen overflow-hidden bg-slate-50">
+      <Sidebar active="dashboard" shop={shop} onDarkModeToggle={toggleDark} isDark={isDark}
+        mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
 
-            {/* Apply Fix Overlay */}
-            {applyingFix && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-                    <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 shadow-2xl">
-                        <div className="text-center">
-                            <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">Applying Fix</h3>
-                            <p className="text-slate-600">{fixStatus}</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            {/* Toast Notification */}
-            {toast && (
-                <div className={`fixed bottom-6 right-6 z-50 px-6 py-4 rounded-xl shadow-lg max-w-sm transition-all ${
-                    toast.type === 'success' 
-                        ? 'bg-green-500 text-white' 
-                        : toast.type === 'error' 
-                        ? 'bg-red-500 text-white' 
-                        : 'bg-slate-800 text-white'
-                }`}>
-                    <div className="flex items-center gap-3">
-                        {toast.type === 'success' ? (
-                            <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                        ) : toast.type === 'error' ? (
-                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                        ) : (
-                            <RefreshCw className="w-5 h-5 flex-shrink-0" />
-                        )}
-                        <p className="font-medium text-sm">{toast.message}</p>
-                    </div>
-                </div>
-            )}
-            
-            {/* Header */}
-            <header className="bg-white border-b border-slate-200">
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={() => navigate('/signin')}
-                                className="text-slate-400 hover:text-slate-600 transition-colors"
-                            >
-                                <ArrowLeft className="w-5 h-5" />
-                            </button>
-                            <div>
-                                <h1 className="text-xl font-black text-slate-900">AI Growth Manager</h1>
-                                <p className="text-sm text-slate-500">{shop}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                        <button
-                            onClick={handleSync}
-                            disabled={syncing}
-                            className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-black hover:bg-slate-200 transition-colors disabled:opacity-50 flex items-center gap-2"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                            {syncing ? 'Fetching data...' : 'Sync Data'}
-                        </button>
-                        <button
-                            onClick={handleAnalyze}
-                            disabled={analyzing}
-                            className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-black hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
-                        >
-                            {analyzing ? (
-                                <>
-                                    <RefreshCw className="w-4 h-4 animate-spin" />
-                                    Analyzing...
-                                </>
-                            ) : (
-                                'Analyze Store'
-                            )}
-                        </button>
-                    </div>
-                    </div>
-                </div>
-            </header>
-
-            {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-6 py-8">
-                {/* Welcome Section */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-8"
-                >
-                    <h2 className="text-3xl font-black text-slate-900 mb-2">
-                        Welcome to Your Dashboard
-                    </h2>
-                    <p className="text-slate-600">
-                        Get AI-powered insights and fixes to grow your Shopify store
-                    </p>
-                </motion.div>
-
-                {dashboardData ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Health Score Card */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="lg:col-span-1"
-                        >
-                            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="font-black text-slate-900">Health Score</h3>
-                                    <Target className="w-5 h-5 text-primary" />
-                                </div>
-                                <div className="relative w-32 h-32 mx-auto mb-4">
-                                    <svg className="w-32 h-32 transform -rotate-90">
-                                        <circle
-                                            cx="64"
-                                            cy="64"
-                                            r="56"
-                                            stroke="#e2e8f0"
-                                            strokeWidth="12"
-                                            fill="none"
-                                        />
-                                        <circle
-                                            cx="64"
-                                            cy="64"
-                                            r="56"
-                                            stroke="url(#gradient)"
-                                            strokeWidth="12"
-                                            fill="none"
-                                            strokeDasharray={`${2 * Math.PI * 56}`}
-                                            strokeDashoffset={`${2 * Math.PI * 56 * (1 - (dashboardData.snapshot?.healthScore || 75) / 100)}`}
-                                            className="transition-all duration-1000"
-                                        />
-                                        <defs>
-                                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" stopColor="#3b82f6" />
-                                                <stop offset="100%" stopColor="#8b5cf6" />
-                                            </linearGradient>
-                                        </defs>
-                                    </svg>
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <span className="text-3xl font-black text-slate-900">
-                                            {dashboardData.snapshot?.healthScore ?? dashboardData.healthScore ?? 0}
-                                        </span>
-                                    </div>
-                                </div>
-                                <p className="text-center text-sm text-slate-600">
-                                    Your store is performing {(dashboardData.snapshot?.healthScore || 75) > 80 ? 'excellently' : (dashboardData.snapshot?.healthScore || 75) > 60 ? 'well' : 'poorly'}
-                                </p>
-                                
-                                {/* Health History Sparkline */}
-                                {dashboardData.scoreHistory && dashboardData.scoreHistory.length > 1 && (
-                                    <div className="mt-4 pt-4 border-t border-slate-100">
-                                        <p className="text-xs text-slate-500 mb-2 text-center">30-day trend</p>
-                                        <svg viewBox="0 0 200 50" className="w-full h-12" preserveAspectRatio="none">
-                                            {(() => {
-                                                const data = dashboardData.scoreHistory.map(h => h.healthScore || h.score || 0);
-                                                const min = Math.min(...data, 0);
-                                                const max = Math.max(...data, 100);
-                                                const range = max - min || 1;
-                                                const points = data.map((val, i) => {
-                                                    const x = (i / (data.length - 1)) * 200;
-                                                    const y = 50 - ((val - min) / range) * 45 - 2.5;
-                                                    return `${x},${y}`;
-                                                }).join(' ');
-                                                return (
-                                                    <g>
-                                                        <polyline
-                                                            fill="none"
-                                                            stroke="url(#sparkGradient)"
-                                                            strokeWidth="2"
-                                                            points={points}
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                        />
-                                                        <defs>
-                                                            <linearGradient id="sparkGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                                                <stop offset="0%" stopColor="#3b82f6" />
-                                                                <stop offset="100%" stopColor="#8b5cf6" />
-                                                            </linearGradient>
-                                                        </defs>
-                                                        {data.map((val, i) => {
-                                                            const x = (i / (data.length - 1)) * 200;
-                                                            const y = 50 - ((val - min) / range) * 45 - 2.5;
-                                                            return (
-                                                                <circle
-                                                                    key={i}
-                                                                    cx={x}
-                                                                    cy={y}
-                                                                    r="2"
-                                                                    fill={i === data.length - 1 ? '#8b5cf6' : '#3b82f6'}
-                                                                />
-                                                            );
-                                                        })}
-                                                    </g>
-                                                );
-                                            })()}
-                                        </svg>
-                                    </div>
-                                )}
-                            </div>
-                        </motion.div>
-
-                        {/* KPI Cards */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="lg:col-span-2 grid grid-cols-2 gap-4"
-                        >
-                            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm text-slate-600">Conversion Rate</span>
-                                    <TrendingUp className="w-4 h-4 text-green-500" />
-                                </div>
-                                <p className="text-2xl font-black text-slate-900">
-                                    {((dashboardData.snapshot?.metrics?.conversionRate ?? dashboardData.conversionRate ?? 0) * 100).toFixed(2)}%
-                                </p>
-                                <p className="text-xs text-slate-500">Industry avg: 2.5%</p>
-                            </div>
-
-                            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm text-slate-600">Avg Order Value</span>
-                                    <TrendingUp className="w-4 h-4 text-green-500" />
-                                </div>
-                                <p className="text-2xl font-black text-slate-900">
-                                    ₹{Math.round(dashboardData.snapshot?.metrics?.avgOrderValue ?? dashboardData.avgOrderValue ?? 0)}
-                                </p>
-                                <p className="text-xs text-slate-500">Last 90 days</p>
-                            </div>
-
-                            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm text-slate-600">Cart Abandonment</span>
-                                    <AlertCircle className="w-4 h-4 text-orange-500" />
-                                </div>
-                                <p className="text-2xl font-black text-slate-900">
-                                    {((dashboardData.snapshot?.metrics?.cartAbandonRate ?? dashboardData.cartAbandonRate ?? 0) * 100).toFixed(1)}%
-                                </p>
-                                <p className="text-xs text-slate-500">Industry avg: 70%</p>
-                            </div>
-
-                            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm text-slate-600">Total Orders</span>
-                                    <CheckCircle className="w-4 h-4 text-blue-500" />
-                                </div>
-                                <p className="text-2xl font-black text-slate-900">
-                                    {dashboardData.snapshot?.metrics?.orderCount ?? dashboardData.totalOrders ?? 0}
-                                </p>
-                                <p className="text-xs text-slate-500">Last 90 days</p>
-                            </div>
-                        </motion.div>
-
-                        {/* AI Suggestions */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
-                            className="lg:col-span-3"
-                        >
-                            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h3 className="font-black text-slate-900 flex items-center gap-2">
-                                        <Zap className="w-5 h-5 text-yellow-500" />
-                                        AI Suggestions
-                                    </h3>
-                                    <span className="text-sm text-slate-500">
-                                        {dashboardData.suggestions?.length || 3} recommendations
-                                    </span>
-                                </div>
-
-                                <div className="space-y-4">
-                                    {(dashboardData.snapshot?.problems || dashboardData.analysis?.problems || []).length > 0 ? (
-                                        (dashboardData.snapshot?.problems || dashboardData.analysis?.problems || []).map((problem, index) => (
-                                        <div key={problem.id || index} className="border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <h4 className="font-black text-slate-900">{problem.title || problem.description}</h4>
-                                                        <span className={`px-2 py-1 text-xs font-black rounded ${
-                                                            problem.severity === 'critical' 
-                                                                ? 'bg-red-100 text-red-700'
-                                                                : problem.severity === 'warning'
-                                                                ? 'bg-orange-100 text-orange-700'
-                                                                : 'bg-green-100 text-green-700'
-                                                        }`}>
-                                                            {problem.severity || 'Medium'}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-slate-600 mb-2">{problem.description || problem.reason}</p>
-                                                    {problem.impact && <p className="text-sm font-black text-primary">{problem.impact}</p>}
-                                                </div>
-                                                {problem.fixType && problem.fixType !== 'none' && (
-                                                    <button
-                                                        onClick={() => handleApplyFix(problem)}
-                                                        disabled={applyingFix}
-                                                        className="ml-4 px-4 py-2 bg-primary text-white rounded-lg text-sm font-black hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
-                                                    >
-                                                        {applyingFix ? (
-                                                            <>
-                                                                <RefreshCw className="w-4 h-4 animate-spin" />
-                                                                Applying...
-                                                            </>
-                                                        ) : (
-                                                            'Apply Fix'
-                                                        )}
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                        ))
-                                    ) : (
-                                        <div className="text-center py-8">
-                                            <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                                            <h3 className="text-lg font-black text-slate-900 mb-2">No Issues Found</h3>
-                                            <p className="text-slate-600">Your store is performing excellently! Keep up the great work.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </motion.div>
-                    </div>
-                ) : (
-                    <div className="text-center py-12">
-                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Clock className="w-8 h-8 text-slate-400" />
-                        </div>
-                        <h3 className="text-lg font-black text-slate-900 mb-2">No Data Available</h3>
-                        <p className="text-slate-600 mb-6">
-                            Connect your store and run an analysis to see your dashboard
-                        </p>
-                        <button 
-                            onClick={() => window.location.reload()}
-                            className="px-6 py-3 bg-primary text-white rounded-lg font-black hover:bg-primary/90 transition-colors"
-                        >
-                            Refresh Dashboard
-                        </button>
-                    </div>
-                )}
-            </main>
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl text-white text-sm font-bold shadow-xl ${toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500'}`}>
+          {toast.msg}
         </div>
-    )
+      )}
+
+      <main className="flex-1 lg:ml-[var(--c-sidebar-w)] flex flex-col h-screen overflow-hidden">
+
+        {/* Top header bar */}
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0 z-10">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setSidebarOpen(s => !s)} className="lg:hidden text-slate-400 hover:text-slate-600">
+              <Menu className="w-5 h-5" />
+            </button>
+            {/* Store name + dropdown look */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 cursor-pointer border border-slate-200">
+              <div className="w-5 h-5 bg-slate-900 rounded flex items-center justify-center">
+                <span className="text-white text-[9px] font-black">S</span>
+              </div>
+              <span className="text-sm font-semibold text-slate-900">{shopName}</span>
+              <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </div>
+            {/* Search */}
+            <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg w-52">
+              <Search className="w-4 h-4 text-slate-400" />
+              <span className="text-sm text-slate-400">Search insights...</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Date range */}
+            <button className="hidden md:flex items-center gap-2 px-3 py-2 text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors">
+              <Calendar className="w-4 h-4" />
+              Last 30 Days
+            </button>
+            {/* Notification */}
+            <button className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors">
+              <Bell className="w-5 h-5 text-slate-500" />
+              {problems.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
+            </button>
+            {/* Action buttons */}
+            <button onClick={handleAnalyze} disabled={analyzing}
+              className="btn-ghost text-xs disabled:opacity-50">
+              <Sparkles className={`w-3.5 h-3.5 ${analyzing ? 'animate-spin' : ''}`} style={{ color: 'var(--c-primary)' }} />
+              {analyzing ? 'Analyzing...' : 'Analyze'}
+            </button>
+            <button onClick={handleSync} disabled={syncing}
+              className="btn-primary text-xs disabled:opacity-50">
+              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Syncing...' : 'Sync Now'}
+            </button>
+          </div>
+        </header>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
+          <div className="p-6 space-y-5 max-w-[1400px] mx-auto">
+
+            {/* Token expired banner */}
+            {dashData?.tokenExpired && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 flex items-center justify-between gap-4">
+                <p className="text-sm font-medium text-amber-800">⚠️ Shopify token expired — showing cached data.</p>
+                <a href="/onboarding" className="px-4 py-1.5 bg-amber-500 text-white rounded-lg text-sm font-bold hover:bg-amber-600 transition-colors flex-shrink-0">
+                  Reconnect Store
+                </a>
+              </div>
+            )}
+
+            {/* TOP ROW: Health Score | AI Revenue Impact | 3 KPI sparklines */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+              {/* Store Health Score */}
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+                className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-slate-900">Store Health Score</h3>
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                    {healthScore >= 80 ? '+2 pts' : healthScore >= 60 ? '+0 pts' : '-1 pts'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-5">
+                  <HealthRing score={healthScore} />
+                  <div className="flex-1">
+                    <div className="flex items-start gap-2 mb-4">
+                      <span className={`text-lg ${problems.length === 0 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                        {problems.length === 0 ? '✓' : '⚠'}
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {problems.length === 0 ? 'Store Fully Optimized' : `${problems.length} Issues Detected`}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                          {problems.length === 0
+                            ? 'All parameters are peak.'
+                            : problems.slice(0, 2).map(p => p.title || p.description).join(', ')}
+                        </p>
+                      </div>
+                    </div>
+                    <Link to="/ai-actions"
+                      className="flex items-center justify-center gap-2 w-full bg-primary text-white text-sm font-semibold py-2.5 px-4 rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-primary/20">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Review AI Suggestions
+                    </Link>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* AI Revenue Impact */}
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                className="bg-gradient-to-br from-primary/5 to-white rounded-2xl border border-primary/20 shadow-sm p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-28 h-28 opacity-[0.07] pointer-events-none">
+                  <svg viewBox="0 0 100 100" fill="none" className="w-full h-full">
+                    <circle cx="50" cy="50" r="45" stroke="#2563eb" strokeWidth="8" />
+                    <text x="50" y="62" textAnchor="middle" fill="#2563eb" fontSize="40" fontWeight="900">₹</text>
+                  </svg>
+                </div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <h3 className="text-base font-semibold text-slate-900">AI Revenue Impact</h3>
+                </div>
+                <p className="text-xs text-slate-500 mb-5">Total value generated by AI actions this month.</p>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-4xl font-black text-primary">
+                    ₹{aiRevenue > 0 ? aiRevenue.toFixed(0) : (metrics.totalRevenue ? Math.round(metrics.totalRevenue).toLocaleString() : '0')}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
+                    <TrendingUp className="w-3 h-3" /> 14x ROI
+                  </span>
+                  <span className="text-xs text-slate-400">vs. last month</span>
+                </div>
+              </motion.div>
+
+              {/* 3 KPI sparkline cards stacked */}
+              <div className="flex flex-col gap-3">
+                {(() => {
+                  // Compute real change deltas from health history if available
+                  const prev = historyData.length >= 2 ? historyData[historyData.length - 2] : null
+                  const cur  = historyData.length >= 1 ? historyData[historyData.length - 1] : null
+                  const prevMetrics = prev?.metrics || {}
+                  const curMetrics  = cur?.metrics  || metrics
+
+                  const convRate     = (curMetrics.conversionRate  || metrics.conversionRate  || 0) * 100
+                  const prevConv     = (prevMetrics.conversionRate || metrics.conversionRate  || 0) * 100
+                  const convChange   = convRate - prevConv
+
+                  const aov          = Math.round(curMetrics.avgOrderValue  || metrics.avgOrderValue  || 0)
+                  const prevAov      = Math.round(prevMetrics.avgOrderValue || metrics.avgOrderValue  || 0)
+                  const aovChange    = aov - prevAov
+
+                  const abandon      = (curMetrics.cartAbandonRate  || metrics.cartAbandonRate  || 0) * 100
+                  const prevAbandon  = (prevMetrics.cartAbandonRate || metrics.cartAbandonRate  || 0) * 100
+                  const abandonChange = abandon - prevAbandon
+
+                  return [
+                    {
+                      label: 'CONVERSION RATE',
+                      value: `${convRate.toFixed(1)}%`,
+                      change: convChange === 0 ? '—' : `${convChange > 0 ? '+' : ''}${convChange.toFixed(1)}%`,
+                      up: convChange >= 0, color: convChange >= 0 ? '#22c55e' : '#ef4444',
+                    },
+                    {
+                      label: 'AVG ORDER VALUE',
+                      value: `₹${aov.toLocaleString()}`,
+                      change: aovChange === 0 ? '—' : `${aovChange > 0 ? '+₹' : '-₹'}${Math.abs(aovChange)}`,
+                      up: aovChange >= 0, color: aovChange >= 0 ? '#22c55e' : '#ef4444',
+                    },
+                    {
+                      label: 'ABANDONED CART',
+                      value: `${abandon.toFixed(0)}%`,
+                      change: abandonChange === 0 ? '—' : `${abandonChange > 0 ? '+' : ''}${abandonChange.toFixed(0)}%`,
+                      up: abandonChange <= 0, color: abandonChange <= 0 ? '#22c55e' : '#ef4444',
+                    },
+                  ]
+                })().map((kpi, i) => (
+                  <motion.div key={kpi.label} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.12 + i * 0.06 }}
+                    className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{kpi.label}</p>
+                      <div className="flex items-baseline gap-2 mt-1">
+                        <span className="text-xl font-black text-slate-900">{kpi.value}</span>
+                        <span className={`text-xs font-semibold ${kpi.up ? 'text-emerald-500' : 'text-red-500'}`}>{kpi.change}</span>
+                      </div>
+                    </div>
+                    <Sparkline color={kpi.color} up={kpi.up} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {/* BOTTOM ROW: Revenue Overview chart | AI Actions Feed */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+              {/* Revenue Overview — 2/3 width */}
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Revenue Overview</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Total vs. AI-Driven Revenue</p>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-full bg-slate-300" />
+                      <span className="text-slate-500 text-xs">Total</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-full bg-primary shadow-sm shadow-primary/40" />
+                      <span className="text-slate-900 text-xs font-medium">AI-Driven</span>
+                    </div>
+                  </div>
+                </div>
+                <RevenueChart data={historyData} />
+              </motion.div>
+
+              {/* AI Actions Feed — 1/3 width */}
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+                className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-lg font-bold text-slate-900">AI Actions Feed</h3>
+                  <Link to="/ai-actions" className="text-xs font-semibold text-primary hover:text-blue-700">View All</Link>
+                </div>
+                <div className="flex-1 space-y-5 overflow-y-auto scrollbar-hide">
+                  {aiActions.length > 0 ? (
+                    aiActions.map((a, i) => (
+                      <div key={a.id || i} className={`relative pl-5 border-l-2 pb-1 ${a.status === 'applied' || a.status === 'completed' ? 'border-primary' : 'border-slate-200'}`}>
+                        <div className={`absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full ring-2 ring-white ${a.status === 'applied' || a.status === 'completed' ? 'bg-primary' : 'bg-slate-300'}`} />
+                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                          <p className="text-sm font-semibold text-slate-900 truncate">{a.fixType || a.problemId || 'AI Fix'}</p>
+                          <span className="text-[10px] text-slate-400 flex-shrink-0">{a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recent'}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 line-clamp-2">{a.status} — {a.fixType || 'auto-fix applied'}</p>
+                        {(a.status === 'applied' || a.status === 'completed') && (
+                          <p className="text-xs font-semibold text-emerald-600 mt-1 flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3" /> Successfully applied
+                          </p>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    /* Show problems as pending actions if no fixes yet */
+                    problems.length > 0 ? problems.slice(0, 4).map((p, i) => (
+                      <div key={i} className="relative pl-5 border-l-2 border-slate-200 pb-1">
+                        <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full ring-2 ring-white bg-amber-400" />
+                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                          <p className="text-sm font-semibold text-slate-900 truncate">{p.title}</p>
+                          <span className="text-[10px] text-slate-400 flex-shrink-0">Pending</span>
+                        </div>
+                        <p className="text-xs text-slate-500 line-clamp-1">{p.description}</p>
+                        {p.potentialRevenue > 0 && (
+                          <p className="text-xs font-semibold text-emerald-600 mt-1">
+                            +₹{Math.round(p.potentialRevenue).toLocaleString()} potential
+                          </p>
+                        )}
+                      </div>
+                    )) : (
+                      <div className="text-center py-8">
+                        <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <Sparkles className="w-5 h-5 text-slate-300" />
+                        </div>
+                        <p className="text-sm text-slate-400">No AI actions yet</p>
+                        <p className="text-xs text-slate-400 mt-1">Click Analyze to generate</p>
+                      </div>
+                    )
+                  )}
+                </div>
+              </motion.div>
+            </div>
+
+          </div>
+        </div>
+      </main>
+    </div>
+  )
 }

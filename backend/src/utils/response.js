@@ -1,8 +1,7 @@
+const isProd = process.env.NODE_ENV === 'production';
+
 /**
  * Send a successful JSON response.
- * @param {Response} res
- * @param {*} data
- * @param {number} status  default 200
  */
 export function success(res, data = null, status = 200) {
   return res.status(status).json({ success: true, data });
@@ -10,10 +9,7 @@ export function success(res, data = null, status = 200) {
 
 /**
  * Send an error JSON response.
- * Reads status and message from custom error classes when available.
- * @param {Response} res
- * @param {Error|string} err
- * @param {number} status
+ * In production: never leak stack traces or internal error details.
  */
 export function error(res, err, status = 500) {
   let statusCode = status;
@@ -25,8 +21,11 @@ export function error(res, err, status = 500) {
     statusCode = status;
   } else if (err) {
     statusCode = err.statusCode || status;
-    message = err.message || 'Internal server error';
     code = err.code || 'INTERNAL_ERROR';
+    // In production, only expose messages from known safe error classes
+    if (!isProd || err.statusCode < 500) {
+      message = err.message || 'Internal server error';
+    }
   }
 
   return res.status(statusCode).json({ success: false, error: { code, message } });

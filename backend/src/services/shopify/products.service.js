@@ -11,53 +11,111 @@ import { shopifyRateLimiter } from '../../utils/rateLimiter.js';
 export async function fetchProducts(shopDomain, accessToken, forceRefresh = false) {
   const cacheKey = shopifyCache.key.products(shopDomain);
 
-  // Return cached data if available and not forcing refresh
   if (!forceRefresh && shopifyCache.has(cacheKey)) {
     logger.debug({ shopDomain }, 'Products fetched from cache');
     return shopifyCache.get(cacheKey);
   }
 
-  // Check rate limit before making API call
   if (!shopifyRateLimiter.isAllowed(shopDomain, 'standard')) {
     const remaining = shopifyRateLimiter.getRemaining(shopDomain, 'standard');
     throw new ShopifyApiError(`Rate limit exceeded. ${remaining} requests remaining.`);
   }
 
+  const PRODUCTS_QUERY = `
+    query getProducts($cursor: String) {
+      products(first: 250, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        edges {
+          node {
+            id
+            title
+            status
+            descriptionHtml
+            tags
+            vendor
+            productType
+            images(first: 5) { edges { node { src altText } } }
+            variants(first: 10) {
+              edges { node { id title price compareAtPrice inventoryQuantity } }
+            }
+          }
+        }
+      }
+    }
+  `;
+
   try {
-    const client = new shopify.clients.Rest({
+    const client = new shopify.clients.Graphql({
       session: { shop: shopDomain, accessToken },
     });
 
     const allProducts = [];
-    let pageInfo      = null;
+    let cursor = null;
 
     do {
-      const params = {
-        limit:  250,
-        fields: 'id,title,status,variants,images,body_html,tags,vendor,product_type',
-      };
+      const response = await client.request(PRODUCTS_QUERY, {
+        variables: cursor ? { cursor } : {},
+      });
 
-      if (pageInfo) params.page_info = pageInfo;
+      const data = response.data?.products;
+      if (!data) break;
 
-      const response = await client.get({ path: 'products', query: params });
+      for (const { node } of data.edges) {
+        allProducts.push({
+          id: node.id.replace('gid://shopify/Product/', ''),
+          gid: node.id,
+          title: node.title,
+          status: node.status?.toLowerCase(),
+          body_html: node.descriptionHtml,
+          tags: node.tags?.join(', '),
+          vendor: node.vendor,
+          product_type: node.productType,
+          images: node.images.edges.map(e => ({ src: e.node.src, alt: e.node.altText })),
+          variants: node.variants.edges.map(e => ({
+            id: e.node.id.replace('gid://shopify/ProductVariant/', ''),
+            title: e.node.title,
+            price: e.node.price,
+            compare_at_price: e.node.compareAtPrice,
+            inventory_quantity: e.node.inventoryQuantity,
+          })),
+        });
+      }
 
-      allProducts.push(...(response.body.products || []));
+      cursor = data.pageInfo.hasNextPage ? data.pageInfo.endCursor : null;
+    } while (cursor);
 
-      const linkHeader = response.headers?.link || '';
-      const nextMatch  = linkHeader.match(/<[^>]+page_info=([^&>]+)[^>]*>;\s*rel="next"/);
-      pageInfo         = nextMatch ? nextMatch[1] : null;
-
-    } while (pageInfo);
-
-    // Cache the results for 30 minutes
     shopifyCache.set(cacheKey, allProducts, 1800);
-
     logger.debug({ shopDomain, count: allProducts.length }, 'Products fetched');
     return allProducts;
 
   } catch (err) {
     logger.error({ err, shopDomain }, 'Failed to fetch products');
     throw new ShopifyApiError(`Products fetch failed: ${err.message}`);
+  }
+}
+
+/**
+ * Create a new product via Shopify REST API
+ */
+export async function createProduct(shopDomain, accessToken, productData) {
+  try {
+    const client = new shopify.clients.Rest({
+      session: { shop: shopDomain, accessToken },
+    });
+
+    const response = await client.post({
+      path: 'products',
+      data: { product: productData },
+    });
+
+    // Clear cache after creating product
+    const cacheKey = shopifyCache.key.products(shopDomain);
+    shopifyCache.delete(cacheKey);
+
+    return response.body.product;
+  } catch (err) {
+    logger.error({ err, shopDomain }, 'Failed to create product');
+    throw new ShopifyApiError(`Product creation failed: ${err.message}`);
   }
 }
 

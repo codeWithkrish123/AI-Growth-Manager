@@ -1,79 +1,155 @@
 import dotenv from 'dotenv';
 dotenv.config();
-import express              from 'express';
-import helmet               from 'helmet';
-import cors                 from 'cors';
-import rateLimit            from 'express-rate-limit';
+
+import express           from 'express';
+import helmet            from 'helmet';
+import cors              from 'cors';
+import rateLimit         from 'express-rate-limit';
 import { requestLogger, errorHandler } from './middlewares/index.js';
-import routes               from './routes/index.js';
-import { config }           from './config/index.js';
-import path                 from 'path';
-import { fileURLToPath }    from 'url';
+import routes            from './routes/index.js';
+import { config }        from './config/index.js';
+import path              from 'path';
+import { fileURLToPath } from 'url';
+import { logger }        from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname  = path.dirname(__filename);
 
 export const app = express();
 
-// ─── Security headers ─────────────────────────────────────────────────────────
-app.use(helmet());
+// ── Trust proxy (for rate-limiting behind Render/Nginx) ───────────────────────
+app.set('trust proxy', 1);
 
-// ─── CORS ─────────────────────────────────────────────────────────────────────
-app.use(cors({
-  origin:      config.isDev ? '*' : process.env.FRONTEND_URL,
-  credentials: true,
+// ── Security headers (Helmet) ─────────────────────────────────────────────────
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:  ["'self'"],
+      scriptSrc:   ["'self'", "'unsafe-inline'", 'https://cdn.shopify.com'],
+      styleSrc:    ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc:     ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc:      ["'self'", 'data:', 'https:', 'blob:'],
+      connectSrc:  ["'self'", 'https://*.myshopify.com', 'https://accounts.google.com'],
+      frameAncestors: ["'self'", 'https://*.myshopify.com', 'https://admin.shopify.com'],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // needed for Shopify embedded apps
 }));
 
-// ─── Body parsing ─────────────────────────────────────────────────────────────
-// rawBody is needed for Shopify HMAC webhook verification
-app.use(
-  express.json({
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  })
-);
-app.use(express.urlencoded({ extended: true }));
+// ── HTTPS redirect in production ──────────────────────────────────────────────
+if (!config.isDev) {
+  app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] !== 'https') {
+      return res.redirect(301, `https://${req.headers.host}${req.url}`);
+    }
+    next();
+  });
+}
 
-// ─── Request logging ──────────────────────────────────────────────────────────
+// ── CORS ──────────────────────────────────────────────────────────────────────
+const allowedOrigins = config.isDev
+  ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3001']
+  : [process.env.FRONTEND_URL].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow no-origin (mobile apps, curl, Shopify webhooks)
+    if (!origin) return callback(null, true);
+    if (config.isDev) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Shopify-Hmac-Sha256', 'X-Shopify-Shop-Domain', 'X-Shopify-Topic'],
+}));
+
+// ── Body parsing (rawBody needed for Shopify HMAC) ────────────────────────────
+app.use(express.json({
+  verify: (req, _res, buf) => { req.rawBody = buf; },
+  limit: '1mb',
+}));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// ── Request logging ───────────────────────────────────────────────────────────
 app.use(requestLogger);
 
-// ─── Serve frontend static files for Shopify embedded apps ─────────────────────
+// ── Serve frontend static files ───────────────────────────────────────────────
 const frontendDist = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendDist));
 
-// ─── Rate limiting for public endpoints ─────────────────────────────────────
+// ── Rate limiters ─────────────────────────────────────────────────────────────
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 requests per window
+  windowMs: 15 * 60 * 1000,
+  max: 20,
   message: { error: 'Too many authentication attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => req.ip,
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: { error: 'Too many requests, please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.params?.shopDomain || req.ip,
 });
 
 const webhookLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // 100 requests per minute for webhooks
+  windowMs: 60 * 1000,
+  max: 200,
   message: { error: 'Webhook rate limit exceeded.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Apply stricter rate limits to auth endpoints
 app.use('/api/auth', authLimiter);
-app.use('/auth', authLimiter);
+app.use('/auth',     authLimiter);
 app.use('/webhooks', webhookLimiter);
+app.use('/api',      apiLimiter);
 
-// ─── Health check (for load balancer / uptime) ────────────────────────────────
-app.get('/ping', (_req, res) => res.json({ status: 'ok' }));
+// ── Health endpoints ──────────────────────────────────────────────────────────
+app.get('/ping', (_req, res) =>
+  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+);
 
-// ─── All API routes (includes Shopify embedded app launch handler at /) ───────────
+app.get('/health', async (_req, res) => {
+  try {
+    const { healthCheck }   = await import('./config/database.js');
+    const { redisHealthCheck } = await import('./config/redis.js');
+    const [db, redis] = await Promise.all([healthCheck(), redisHealthCheck()]);
+    const healthy = db.status === 'healthy' && redis.status === 'healthy';
+    return res.status(healthy ? 200 : 503).json({
+      status: healthy ? 'healthy' : 'degraded',
+      services: { database: db, redis },
+      uptime: Math.round(process.uptime()),
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    return res.status(503).json({ status: 'error', error: err.message });
+  }
+});
+
+app.get('/health/liveness',  (_req, res) => res.json({ alive: true }));
+app.get('/health/readiness', async (_req, res) => {
+  try {
+    const { healthCheck } = await import('./config/database.js');
+    const db = await healthCheck();
+    return db.status === 'healthy'
+      ? res.json({ ready: true })
+      : res.status(503).json({ ready: false, reason: 'database' });
+  } catch {
+    return res.status(503).json({ ready: false, reason: 'error' });
+  }
+});
+
+// ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/', routes);
 
-// ─── 404 handler ─────────────────────────────────────────────────────────────
+// ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: 'Route not found' }));
 
-// ─── Global error handler (must be last) ─────────────────────────────────────
+// ── Global error handler ──────────────────────────────────────────────────────
 app.use(errorHandler);
-console.log(process.env.DATABASE_URL);
-

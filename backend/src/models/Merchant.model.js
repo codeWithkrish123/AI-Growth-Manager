@@ -12,18 +12,26 @@ export class Merchant {
       shopInfo = null,
     } = data;
 
-    const encryptedToken = encrypt(accessToken);
+    // Only encrypt if accessToken is provided (Google OAuth users won't have one yet)
+    const encryptedToken = accessToken ? encrypt(accessToken) : '';
     
     const sql = `
       INSERT INTO merchants (shop_domain, access_token_enc, scope, is_active, plan_tier, shop_info)
       VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (shop_domain) DO UPDATE SET
+        access_token_enc = CASE WHEN EXCLUDED.access_token_enc != '' THEN EXCLUDED.access_token_enc ELSE merchants.access_token_enc END,
+        scope = COALESCE(EXCLUDED.scope, merchants.scope),
+        is_active = EXCLUDED.is_active,
+        plan_tier = EXCLUDED.plan_tier,
+        shop_info = COALESCE(EXCLUDED.shop_info, merchants.shop_info),
+        updated_at = NOW()
       RETURNING *
     `;
     
     const result = await query(sql, [
       shopDomain.toLowerCase().trim(),
       encryptedToken,
-      scope,
+      scope || null,
       isActive,
       planTier,
       shopInfo ? JSON.stringify(shopInfo) : null
@@ -187,7 +195,12 @@ export class Merchant {
       },
       
       getAccessToken: function() {
-        return decrypt(this.accessTokenEnc);
+        if (!this.accessTokenEnc) return null;
+        try {
+          return decrypt(this.accessTokenEnc);
+        } catch {
+          return null;
+        }
       },
       
       save: async function() {

@@ -1,122 +1,332 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { ShoppingBag, Search, Filter, MoreVertical, Plus, ArrowUpRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShoppingBag, Search, Filter, MoreVertical, Plus, RefreshCw, FileText, Tag, Menu, X, AlertCircle } from 'lucide-react'
+import Sidebar from '../components/Sidebar'
+import { dashboardAPI, errMsg } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
-const ProductsPage = () => {
-    const products = [
-        { id: 1, name: 'Summer Floral Maxi Dress', category: 'Dresses', price: '$89.00', stock: 42, status: 'Active', conv: '3.2%' },
-        { id: 2, name: 'Minimalist Leather Tote', category: 'Accessories', price: '$120.00', stock: 15, status: 'Low Stock', conv: '2.8%' },
-        { id: 3, name: 'Classic White Sneakers', category: 'Footwear', price: '$75.00', stock: 88, status: 'Active', conv: '4.1%' },
-        { id: 4, name: 'Oversized Silk Shirt', category: 'Tops', price: '$65.00', stock: 0, status: 'Out of Stock', conv: '1.9%' },
-    ];
+export default function ProductsPage() {
+  const navigate = useNavigate();
+  const shop = localStorage.getItem('currentShop') || '';
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalError, setModalError] = useState('');
+  const [formData, setFormData] = useState({ title: '', price: '', description: '', images: [] });
 
-    return (
-        <div className="min-h-screen bg-slate-50 flex">
-            {/* Sidebar Placeholder (matches Dashboard) */}
-            <aside className="w-64 border-r border-slate-200 bg-white flex flex-col p-6 fixed h-screen z-20">
-                <Link to="/dashboard" className="flex items-center gap-3 mb-10 px-2">
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                        <ShoppingBag className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="font-bold text-lg text-slate-900">GrowthAI</span>
-                </Link>
-                <nav className="flex-1 space-y-1">
-                    <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 transition-all">
-                        <span className="material-symbols-outlined">dashboard</span>
-                        <span className="text-sm font-bold">Overview</span>
-                    </Link>
-                    <Link to="/health" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 transition-all">
-                        <span className="material-symbols-outlined">health_metrics</span>
-                        <span className="text-sm font-bold">Health Score</span>
-                    </Link>
-                    <Link to="/products" className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-primary/5 text-primary transition-all">
-                        <span className="material-symbols-outlined fill">inventory_2</span>
-                        <span className="text-sm font-bold">Products</span>
-                    </Link>
-                </nav>
-            </aside>
+  const toggleDark = () => {
+    const next = !isDark; setIsDark(next)
+    document.documentElement.classList.toggle('dark', next)
+    localStorage.setItem('theme', next ? 'dark' : 'light')
+  }
 
-            <main className="ml-64 flex-1 p-10">
-                <header className="flex items-center justify-between mb-10">
-                    <div>
-                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Products</h2>
-                        <p className="text-slate-500 text-sm font-medium mt-1">Manage and optimize your store inventory.</p>
-                    </div>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all">
-                        <Plus className="w-4 h-4" />
-                        Add Product
-                    </button>
-                </header>
+  useEffect(() => {
+    if (!shop) { navigate('/onboarding'); return; }
+    fetchProducts();
+  }, [shop]);
 
-                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                        <div className="relative w-96">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Search products..."
-                                className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-primary/5 text-sm font-medium"
-                            />
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-white transition-all">
-                                <Filter className="w-4 h-4" />
-                                Filters
-                            </button>
-                        </div>
-                    </div>
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const res = await dashboardAPI.getProducts(shop);
+      if (res.data?.success) setProducts(res.data.data || []);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
 
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-slate-100 text-[11px] font-black text-slate-400 uppercase tracking-widest bg-white">
-                                <th className="px-8 py-4">Product</th>
-                                <th className="px-6 py-4">Category</th>
-                                <th className="px-6 py-4">Price</th>
-                                <th className="px-6 py-4">Stock</th>
-                                <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4 text-primary">AI Conv.</th>
-                                <th className="px-6 py-4"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {products.map((p) => (
-                                <tr key={p.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors group">
-                                    <td className="px-8 py-5">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-lg bg-slate-100"></div>
-                                            <span className="text-sm font-bold text-slate-900">{p.name}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-5 text-sm font-medium text-slate-500">{p.category}</td>
-                                    <td className="px-6 py-5 text-sm font-bold text-slate-900">{p.price}</td>
-                                    <td className="px-6 py-5 text-sm font-medium text-slate-500">{p.stock}</td>
-                                    <td className="px-6 py-5">
-                                        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${p.status === 'Active' ? 'bg-emerald-50 text-emerald-600' :
-                                            p.status === 'Low Stock' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'
-                                            }`}>
-                                            {p.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-5">
-                                        <div className="flex items-center gap-1.5 text-primary text-sm font-bold">
-                                            <ArrowUpRight className="w-4 h-4" />
-                                            {p.conv}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-5 text-right">
-                                        <button className="p-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-lg transition-all text-slate-400">
-                                            <MoreVertical className="w-4 h-4" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </main>
+  const handleAddProduct = async () => {
+    setModalError('');
+    if (!formData.title.trim() || !formData.price.trim()) {
+      setModalError('Title and price are required');
+      return;
+    }
+    
+    try {
+      setIsSubmitting(true);
+      // Send without images (base64 data URLs cause Shopify 422 error)
+      const res = await dashboardAPI.createProduct(shop, {
+        title: formData.title,
+        price: formData.price,
+        description: formData.description,
+        images: [] // Skip images for now - they must be valid URLs
+      });
+      if (res.data?.success) {
+        setShowAddModal(false);
+        setFormData({ title: '', price: '', description: '', images: [] });
+        fetchProducts();
+      }
+    } catch (e) {
+      setModalError(errMsg(e, 'Failed to create product'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const readers = files.map(f => {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(f);
+      });
+    });
+    Promise.all(readers).then(images => {
+      setFormData(prev => ({ ...prev, images: [...prev.images, ...images] }));
+    });
+  };
+
+  const filtered = products.filter(p =>
+    p.title?.toLowerCase().includes(search.toLowerCase()) ||
+    p.category?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--c-bg)' }}>
+      <Sidebar active="products" shop={shop} onDarkModeToggle={toggleDark} isDark={isDark}
+        mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
+
+      <main className="flex-1 lg:ml-[var(--c-sidebar-w)] overflow-y-auto scrollbar-hide">
+
+        {/* Header — same pattern as PriceOptimizer */}
+        <div className="sticky top-0 z-20 flex items-center justify-between px-7 py-4 border-b backdrop-blur-sm"
+          style={{ borderColor: 'var(--c-border)', background: 'var(--c-bg)' }}>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden" style={{ color: 'var(--c-text-muted)' }}>
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-lg font-black flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
+                <ShoppingBag className="w-5 h-5 text-indigo-400" />
+                Products
+              </h1>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-muted)' }}>
+                Manage and optimize your store inventory with AI.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={fetchProducts} className="btn-ghost text-xs">
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+            <button onClick={() => setShowAddModal(true)} className="btn-primary text-xs">
+              <Plus className="w-3.5 h-3.5" /> Add Product
+            </button>
+          </div>
         </div>
-    );
-};
 
-export default ProductsPage;
+        <div className="px-7 py-6 space-y-4">
+
+          {/* Search + filter bar */}
+          <div className="card p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="relative flex-1 w-full sm:max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--c-text-subtle)' }} />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search products..."
+                className="input-field pl-9"
+              />
+            </div>
+            <div className="flex items-center gap-3 ml-auto">
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-subtle)' }}>
+                {filtered.length} products
+              </span>
+              <button className="btn-ghost text-xs">
+                <Filter className="w-3.5 h-3.5" /> Filter
+              </button>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="card overflow-hidden">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Price</th>
+                  <th>Status</th>
+                  <th>AI Health</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence mode="popLayout">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-20">
+                        <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-3" style={{ color: 'var(--c-border)' }} />
+                        <p className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--c-text-muted)' }}>Loading inventory…</p>
+                      </td>
+                    </tr>
+                  ) : filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-20">
+                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                          style={{ background: 'var(--c-bg)' }}>
+                          <ShoppingBag className="w-7 h-7" style={{ color: 'var(--c-border)' }} />
+                        </div>
+                        <p className="text-sm font-semibold mb-1" style={{ color: 'var(--c-text)' }}>No products found</p>
+                        <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>Try adjusting your search or sync your store.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((p, i) => (
+                      <motion.tr key={p.id}
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="group cursor-default">
+                        <td>
+                          <div className="flex items-center gap-3">
+                            {p.image ? (
+                              <img src={p.image} alt={p.title}
+                                className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                                style={{ border: '1px solid var(--c-border)' }} />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                                style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
+                                <ShoppingBag className="w-4 h-4" style={{ color: 'var(--c-text-subtle)' }} />
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{p.title}</p>
+                              <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>{p.category || 'General'}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>₹{p.price}</span>
+                        </td>
+                        <td>
+                          <span className={`badge ${
+                            p.status === 'active' ? 'badge-green' :
+                            p.status === 'draft'  ? 'badge-amber' : 'badge-indigo'
+                          }`}>
+                            {p.status || 'archived'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <span className={`badge ${p.hasDescription ? 'badge-green' : 'badge-red'}`}>
+                              <FileText className="w-3 h-3" />
+                              {p.hasDescription ? 'Desc OK' : 'No Desc'}
+                            </span>
+                            <span className={`badge ${p.hasImages ? 'badge-green' : 'badge-red'}`}>
+                              <Tag className="w-3 h-3" />
+                              {p.hasImages ? 'Media OK' : 'No Media'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="text-right">
+                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button className="btn-primary text-xs py-1.5 px-3">Optimize</button>
+                            <button className="btn-ghost text-xs p-1.5">
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))
+                  )}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+
+      <AnimatePresence>
+        {showAddModal && (
+          <motion.div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-md w-full"
+              initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-black flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
+                  <Plus className="w-5 h-5 text-indigo-400" />
+                  Add New Product
+                </h2>
+                <button onClick={() => { setShowAddModal(false); setModalError(''); }}
+                  className="p-1" style={{ color: 'var(--c-text-muted)' }}>
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {modalError && (
+                <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-700 dark:text-red-200">{modalError}</p>
+                </div>
+              )}
+
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-subtle)' }}>
+                    Product Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="e.g., Amazing T-Shirt"
+                    className="input-field mt-1"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-subtle)' }}>
+                    Price (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    className="input-field mt-1"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-subtle)' }}>
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Product description (min 50 characters recommended)"
+                    rows="4"
+                    className="input-field mt-1 resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 mt-6">
+                <button
+                  onClick={() => { setShowAddModal(false); setModalError(''); }}
+                  className="btn-ghost flex-1 text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddProduct}
+                  disabled={isSubmitting}
+                  className="btn-primary flex-1 text-xs"
+                >
+                  {isSubmitting ? 'Creating...' : 'Create & Push to Shopify'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

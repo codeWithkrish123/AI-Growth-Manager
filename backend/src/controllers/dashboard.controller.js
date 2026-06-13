@@ -1,12 +1,13 @@
 import { success, error } from '../utils/response.js';
 import { logger } from '../utils/logger.js';
 import { MerchantModel, AiAnalysisModel, StoreSnapshotModel } from '../models/index.js';
+import { HealthHistoryModel } from '../models/secondary.models.js';
 import { fetchProducts } from '../services/shopify/products.service.js';
 import { fetchOrders } from '../services/shopify/order.services.js';
 import { fetchStoreInfo } from '../services/shopify/store.service.js';
 import { fetchAbandonedCheckouts } from '../services/shopify/order.services.js';
 import { fetchCustomers } from '../services/shopify/customers.service.js';
-import { randomUUID } from 'crypto';
+import { calculateHealthScore } from '../services/shopify/metrics/health.score.js';
 
 /**
  * Get dashboard data for a merchant
@@ -24,12 +25,46 @@ export async function getDashboard(req, res) {
       return error(res, 'Store not found. Please connect your store first.', 404);
     }
 
-    // Use merchant's stored access token
+    // Use merchant's stored access token only — no admin fallback
     const accessToken = merchant.getAccessToken();
     if (!accessToken) {
-      return error(res, 'Access token not found. Please reconnect your store.', 500);
+      return error(res, 'Access token not found. Please reconnect your store via Shopify OAuth.', 401);
     }
-    logger.info({ shopDomain, force }, 'Using merchant access token for dashboard');
+
+    // Quick token validity check — if 401, fall back to cached DB data
+    let tokenValid = true;
+    try {
+      await fetchStoreInfo(shopDomain, accessToken, true);
+    } catch (e) {
+      if (e.message?.includes('401')) {
+        tokenValid = false;
+        logger.warn({ shopDomain }, 'Shopify token expired — serving cached data');
+      }
+    }
+
+    // If token expired, serve from DB cache
+    if (!tokenValid) {
+      const [snapshot, analysis, scoreHistory] = await Promise.all([
+        StoreSnapshotModel.findOne({ merchantId: merchant.id }).catch(() => null),
+        AiAnalysisModel.findOne({ merchantId: merchant.id, status: 'completed' }).catch(() => null),
+        HealthHistoryModel.find({ merchantId: merchant.id, sort: { date: -1 }, limit: 30 }).catch(() => []),
+      ]);
+      return success(res, {
+        shopDomain,
+        tokenExpired: true,
+        reconnectUrl: `/onboarding`,
+        snapshot: snapshot || null,
+        analysis: analysis || null,
+        scoreHistory: (scoreHistory || []).reverse(),
+        healthScore: snapshot?.healthScore ?? 0,
+        products: [],
+      });
+    }
+
+    // Check if this is a first-time load (no snapshot yet)
+    const existingSnapshot = await StoreSnapshotModel.findOne({ merchantId: merchant.id }).catch(() => null);
+    const isFirstLoad = !existingSnapshot;
+    if (isFirstLoad) logger.info({ shopDomain }, 'First dashboard load — building snapshot inline');
 
     // Fetch real data from Shopify with individual error handling
     let products = [], orders = [], storeInfo = {}, checkouts = [], customers = [];
@@ -85,12 +120,33 @@ export async function getDashboard(req, res) {
     const inactiveProducts = products.filter(p => p.status !== 'active');
     const productsWithoutTags = products.filter(p => !p.tags || p.tags.length === 0);
 
+    // Returning customer analysis — needed for health score
+    const emailOrderCount = {};
+    for (const order of orders) {
+      const email = order.email?.toLowerCase();
+      if (email) emailOrderCount[email] = (emailOrderCount[email] || 0) + 1;
+    }
+    const returningCustomers = Object.values(emailOrderCount).filter(c => c > 1).length;
+    const totalUniqueCustomers = Object.keys(emailOrderCount).length || customers.length;
+    const returningRate = totalUniqueCustomers > 0 ? returningCustomers / totalUniqueCustomers : 0;
+    const estimatedSessions = totalOrders * 42;
+    const conversionRate = estimatedSessions > 0 ? ((totalOrders / estimatedSessions) * 100).toFixed(2) : 0;
+
     // Generate AI-powered suggestions
     const suggestions = [];
-    let healthScore = 100;
+    // Use the canonical health score calculator
+    const { healthScore, healthBreakdown } = calculateHealthScore({
+      conversionRate: totalOrders > 0 ? (totalOrders / (totalOrders * 42)) * 100 : 0,
+      cartAbandonRate: totalCarts > 0 ? (checkouts.length / totalCarts) * 100 : 0,
+      avgOrderValue,
+      noDescriptionCount: productsWithoutDescription.length,
+      noImageCount: productsWithoutImages.length,
+      activeProducts: products.filter(p => p.status === 'active').length || 1,
+      outOfStockCount: 0,
+      returningRate,
+    });
 
     if (productsWithoutImages.length > 0) {
-      healthScore -= 15;
       suggestions.push({
         id: '1',
         title: 'Add Product Images',
@@ -103,7 +159,6 @@ export async function getDashboard(req, res) {
     }
 
     if (productsWithoutDescription.length > 0) {
-      healthScore -= 10;
       suggestions.push({
         id: '2',
         title: 'Improve Product Descriptions',
@@ -116,7 +171,6 @@ export async function getDashboard(req, res) {
     }
 
     if (inactiveProducts.length > 0) {
-      healthScore -= 5;
       suggestions.push({
         id: '3',
         title: 'Activate Products',
@@ -128,7 +182,6 @@ export async function getDashboard(req, res) {
     }
 
     if (parseFloat(cartAbandonmentRate) > 60) {
-      healthScore -= 10;
       suggestions.push({
         id: '4',
         title: 'Reduce Cart Abandonment',
@@ -140,23 +193,91 @@ export async function getDashboard(req, res) {
     }
 
     if (productsWithoutTags.length > 0) {
-      healthScore -= 5;
+      const firstUntagged = productsWithoutTags[0];
+      const autoTags = firstUntagged.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s\-]/g, '')
+        .split(/[\s\-]+/)
+        .filter(w => w.length > 2)
+        .slice(0, 5)
+        .join(', ');
+
       suggestions.push({
         id: '5',
         title: 'Add Product Tags',
-        reason: `${productsWithoutTags.length} products missing tags - hurts discoverability`,
+        reason: `${productsWithoutTags.length} product${productsWithoutTags.length > 1 ? 's' : ''} missing tags - hurts discoverability`,
         impact: 'Low',
         action: 'Auto-generate relevant tags',
-        status: 'pending'
+        status: 'pending',
+        fixType: 'add_product_tags',
+        payload: { product: { id: firstUntagged.id }, tags: autoTags },
+        affectedProducts: productsWithoutTags.map(p => ({ id: p.id, title: p.title }))
       });
     }
 
-    // Ensure health score stays within bounds
-    healthScore = Math.max(0, Math.min(100, healthScore));
+    const seoScore = Math.max(0, Math.min(100, Math.round(
+      100
+      - (productsWithoutDescription.length / Math.max(totalProducts, 1)) * 40
+      - (productsWithoutTags.length / Math.max(totalProducts, 1)) * 20
+    )));
+    const speedScore = 72;
+    const productsScore = Math.max(0, Math.min(100, Math.round(
+      100
+      - (productsWithoutImages.length / Math.max(totalProducts, 1)) * 40
+      - (inactiveProducts.length / Math.max(totalProducts, 1)) * 20
+    )));
 
-    // Calculate conversion rate (orders / sessions - estimated)
-    const estimatedSessions = totalOrders * 42; // Industry average 2.4% conversion
-    const conversionRate = estimatedSessions > 0 ? ((totalOrders / estimatedSessions) * 100).toFixed(2) : 0;
+    // Build revenue map: productId -> revenue from orders
+    const productRevenueMap = {};
+    for (const order of orders) {
+      for (const item of (order.line_items || [])) {
+        const pid = String(item.product_id);
+        productRevenueMap[pid] = (productRevenueMap[pid] || 0) + (parseFloat(item.price) * (item.quantity || 1));
+      }
+    }
+
+    // Persist snapshot to DB (upsert pattern — always keep latest)
+    const snapshotMetrics = {
+      totalRevenue,
+      orderCount: totalOrders,
+      avgOrderValue,
+      totalSessions: estimatedSessions,
+      conversionRate: conversionRate / 100,
+      checkoutsInitiated: totalCarts,
+      checkoutsCompleted: totalOrders,
+      cartAbandonRate: cartAbandonmentRate / 100,
+      totalCustomers: totalUniqueCustomers,
+      newCustomers: totalUniqueCustomers - returningCustomers,
+      returningCustomers,
+      returningRate,
+      totalProducts,
+      activeProducts: products.filter(p => p.status === 'active').length,
+      outOfStockCount: 0,
+      noDescriptionCount: productsWithoutDescription.length,
+      noImageCount: productsWithoutImages.length,
+      revenue30d: totalRevenue,
+      orders30d: totalOrders,
+      aov30d: avgOrderValue,
+    };
+    StoreSnapshotModel.create({
+      merchantId: merchant.id,
+      shopDomain,
+      metrics: snapshotMetrics,
+      topProducts: products.slice(0, 5).map(p => ({ id: p.id, title: p.title, price: p.variants?.[0]?.price || '0' })),
+      healthScore,
+      healthBreakdown: { productsWithoutImages: productsWithoutImages.length, productsWithoutDescription: productsWithoutDescription.length, inactiveProducts: inactiveProducts.length },
+      syncedAt: new Date(),
+      dataWindowDays: 30,
+    }).catch(() => {}); // non-blocking, non-fatal
+
+    // Save health history row for chart
+    HealthHistoryModel.create({
+      merchantId: merchant.id,
+      shopDomain,
+      healthScore,
+      date: new Date(),
+      metrics: { revenue: totalRevenue, orderCount: totalOrders },
+    }).catch(() => {});
 
     const dashboardData = {
       shopDomain,
@@ -168,28 +289,8 @@ export async function getDashboard(req, res) {
       },
       snapshot: {
         healthScore,
-        metrics: {
-          totalRevenue,
-          orderCount: totalOrders,
-          avgOrderValue,
-          totalSessions: estimatedSessions,
-          conversionRate: conversionRate / 100,
-          checkoutsInitiated: totalCarts,
-          checkoutsCompleted: totalOrders,
-          cartAbandonRate: cartAbandonmentRate / 100,
-          totalCustomers: customers.length,
-          newCustomers: customers.length,
-          returningCustomers: 0,
-          returningRate: 0,
-          totalProducts,
-          activeProducts: products.filter(p => p.status === 'active').length,
-          outOfStockCount: 0,
-          noDescriptionCount: productsWithoutDescription.length,
-          noImageCount: productsWithoutImages.length,
-          revenue30d: totalRevenue,
-          orders30d: totalOrders,
-          aov30d: avgOrderValue,
-        }
+        healthBreakdown: { ...healthBreakdown, seoScore, speedScore, productsScore },
+        metrics: snapshotMetrics,
       },
       healthScore,
       conversionRate,
@@ -206,19 +307,29 @@ export async function getDashboard(req, res) {
           title: s.title,
           description: s.reason,
           severity: s.impact === 'High' ? 'critical' : s.impact === 'Medium' ? 'warning' : 'info',
-          fixType: 'update_product',
+          fixType: s.fixType || 'none',
           impact: s.impact,
-          payload: s.affectedProducts
+          payload: s.payload || null,
         }))
       },
-      products: products.slice(0, 10).map(p => ({
+      products: products.slice(0, 20).map(p => ({
         id: p.id,
         title: p.title,
         status: p.status,
         image: p.images?.[0]?.src || null,
         price: p.variants?.[0]?.price || '0.00',
+        revenue: productRevenueMap[String(p.id)] || 0,
+        score: Math.max(0, Math.min(100, Math.round(
+          100
+          - ((!p.images || p.images.length === 0) ? 30 : 0)
+          - ((!p.body_html || p.body_html.trim().length < 50) ? 25 : 0)
+          - ((!p.tags || p.tags.length === 0) ? 15 : 0)
+          - ((p.status !== 'active') ? 20 : 0)
+        ))),
         hasDescription: !!p.body_html && p.body_html.length > 50,
-        hasImages: p.images && p.images.length > 0
+        hasImages: p.images && p.images.length > 0,
+        tags: p.tags || '',
+        vendor: p.vendor || '',
       }))
     };
 
@@ -247,10 +358,13 @@ export async function triggerAnalysis(req, res) {
       return error(res, 'Store not found. Please connect your store first.', 404);
     }
 
-    // Use merchant's stored access token
-    const accessToken = merchant.getAccessToken();
+    // Use merchant's stored access token, fall back to admin token for custom apps
+    let accessToken = merchant.getAccessToken();
     if (!accessToken) {
-      return error(res, 'Access token not found. Please reconnect your store.', 500);
+      accessToken = process.env.ADMIN_API_ACCESS_TOKEN;
+    }
+    if (!accessToken) {
+      return error(res, 'Access token not found. Please reconnect your store via Shopify OAuth.', 500);
     }
 
     // Fetch fresh data for analysis
@@ -266,34 +380,43 @@ export async function triggerAnalysis(req, res) {
     // Create a snapshot first (required for analysis)
     const totalRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.total_price) || 0), 0);
     const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
+    const productsNoImg  = products.filter(p => !p.images || p.images.length === 0);
+    const productsNoDesc = products.filter(p => !p.body_html || p.body_html.trim().length < 50);
+
     const snapshot = await StoreSnapshotModel.create({
       merchantId: merchant.id,
       shopDomain,
-      totalRevenue,
-      orderCount: orders.length,
-      avgOrderValue,
-      totalSessions: 0,
-      conversionRate: 0,
-      checkoutsInitiated: checkouts.length,
-      checkoutsCompleted: 0,
-      cartAbandonRate: 0,
-      totalCustomers: 0,
-      newCustomers: 0,
-      returningCustomers: 0,
-      returningRate: 0,
-      totalProducts: products.length,
-      activeProducts: products.filter(p => p.status === 'active').length,
-      outOfStockCount: 0,
-      noDescriptionCount: products.filter(p => !p.body_html || p.body_html.trim().length < 50).length,
-      noImageCount: products.filter(p => !p.images || p.images.length === 0).length,
-      revenue30d: totalRevenue,
-      orders30d: orders.length,
-      aov30d: avgOrderValue,
-      topProducts: products.slice(0, 5).map(p => ({ id: p.id, title: p.title, price: p.variants[0]?.price || '0' })),
+      metrics: {
+        totalRevenue,
+        orderCount: orders.length,
+        avgOrderValue,
+        totalSessions: 0,
+        conversionRate: 0,
+        checkoutsInitiated: checkouts.length,
+        checkoutsCompleted: 0,
+        cartAbandonRate: 0,
+        totalCustomers: 0,
+        newCustomers: 0,
+        returningCustomers: 0,
+        returningRate: 0,
+        totalProducts: products.length,
+        activeProducts: products.filter(p => p.status === 'active').length,
+        outOfStockCount: 0,
+        noDescriptionCount: productsNoDesc.length,
+        noImageCount: productsNoImg.length,
+        revenue30d: totalRevenue,
+        orders30d: orders.length,
+        aov30d: avgOrderValue,
+      },
+      topProducts: products.slice(0, 5).map(p => ({
+        id: p.id,
+        title: p.title,
+        price: p.variants?.[0]?.price || '0',
+      })),
       healthScore: analysisResults.healthScore,
       healthBreakdown: {
-        productsWithoutImages: products.filter(p => !p.images || p.images.length === 0).length,
-        productsWithoutDescription: products.filter(p => !p.body_html || p.body_html.trim().length < 50).length,
+        productsWithoutImages: productsNoImg.length,
+        productsWithoutDescription: productsNoDesc.length,
         inactiveProducts: products.filter(p => p.status !== 'active').length,
       },
       syncedAt: new Date(),
@@ -306,11 +429,11 @@ export async function triggerAnalysis(req, res) {
       snapshotId: snapshot.id,
       shopDomain,
       healthScore: analysisResults.healthScore,
-      summary: {
+      summary: JSON.stringify({
         totalIssues: analysisResults.problems.length,
         criticalIssues: analysisResults.problems.filter(p => p.severity === 'critical').length,
-        potentialRevenue: analysisResults.problems.reduce((sum, p) => sum + (p.potentialRevenue || 0), 0).toFixed(2)
-      },
+        potentialRevenue: analysisResults.problems.reduce((sum, p) => sum + (p.potentialRevenue || 0), 0).toFixed(2),
+      }),
       problems: analysisResults.problems,
       status: 'completed',
       createdAt: new Date(),
@@ -543,63 +666,53 @@ function performAIAnalysis(products, orders, checkouts, shopDomain) {
 export async function getLatestAnalysis(req, res) {
   try {
     const { shopDomain } = req.params;
-    
-    // Find merchant
+
     const merchant = await MerchantModel.findOne({ shopDomain });
-    
     if (!merchant) {
       return error(res, 'Store not found. Please connect your store first.', 404);
     }
 
-    // For now, return mock analysis data
-    const mockAnalysis = {
-      shopDomain,
-      healthScore: 75,
-      analysisDate: new Date().toISOString(),
-      problems: [
-        {
-          id: '1',
-          type: 'missing_descriptions',
-          severity: 'high',
-          title: 'Missing Product Descriptions',
-          description: '8 products are missing descriptions which hurts SEO and conversion rates',
-          affectedProducts: 8,
-          potentialImpact: '+15% conversion rate'
-        },
-        {
-          id: '2',
-          type: 'no_images',
-          severity: 'medium',
-          title: 'Missing Product Images',
-          description: '3 products have no images, making them less likely to sell',
-          affectedProducts: 3,
-          potentialImpact: '+8% conversion rate'
-        }
-      ],
-      suggestions: [
-        {
-          id: '1',
-          title: 'Add Product Descriptions',
-          reason: '8 products missing descriptions hurt SEO',
-          impact: 'High',
-          action: 'Generate AI descriptions for all products',
-          estimatedTime: '5 minutes'
-        },
-        {
-          id: '2',
-          title: 'Optimize Product Images',
-          reason: '3 products have no images',
-          impact: 'Medium',
-          action: 'Add placeholder images and optimize alt text',
-          estimatedTime: '10 minutes'
-        }
-      ]
-    };
+    const analysis = await AiAnalysisModel.findOne({ merchantId: merchant.id, status: 'completed' });
+    if (!analysis) {
+      return success(res, { shopDomain, message: 'No analysis found. Run Analyze first.', problems: [], suggestions: [] });
+    }
 
-    return success(res, mockAnalysis);
-
+    return success(res, analysis);
   } catch (err) {
     logger.error({ err, shopDomain: req.params.shopDomain }, 'Failed to get latest analysis');
     return error(res, 'Failed to retrieve analysis', 500);
+  }
+}
+
+
+/**
+ * GET /api/:shopDomain/products
+ * Returns formatted product list for ProductsPage
+ */
+export async function getProducts(req, res) {
+  try {
+    const { merchant } = req;
+    const accessToken = merchant.getAccessToken() || process.env.ADMIN_API_ACCESS_TOKEN;
+    if (!accessToken) return error(res, 'No access token. Reconnect your store.', 400);
+
+    const products = await fetchProducts(merchant.shopDomain, accessToken);
+    const formatted = products.map(p => ({
+      id: p.id,
+      title: p.title,
+      status: p.status,
+      image: p.images?.[0]?.src || null,
+      price: p.variants?.[0]?.price || '0.00',
+      hasDescription: !!(p.body_html && p.body_html.trim().length > 50),
+      hasImages: p.images?.length > 0,
+      tags: p.tags || '',
+      vendor: p.vendor || '',
+    }));
+    return success(res, formatted);
+  } catch (err) {
+    // Shopify token expired — tell frontend to reconnect
+    if (err.message?.includes('401') || err.response?.code === 401) {
+      return error(res, 'Shopify token expired. Please reconnect your store via the Onboarding page.', 401);
+    }
+    return error(res, err.message || 'Failed to fetch products', 500);
   }
 }

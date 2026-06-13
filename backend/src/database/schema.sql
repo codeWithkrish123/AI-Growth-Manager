@@ -189,6 +189,45 @@ CREATE TABLE IF NOT EXISTS ai_call_logs (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Email Campaigns table (for email marketing)
+CREATE TABLE IF NOT EXISTS email_campaigns (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+    shop_domain VARCHAR(255) NOT NULL,
+    
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(50) DEFAULT 'manual' CHECK (type IN ('manual', 'ai_generated', 'abandoned_cart', 'welcome', 'promo')),
+    status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'sending', 'sent', 'failed')),
+    
+    subject TEXT,
+    body TEXT,
+    
+    total_sent INTEGER DEFAULT 0,
+    total_opened INTEGER DEFAULT 0,
+    total_clicked INTEGER DEFAULT 0,
+    
+    sent_at TIMESTAMP WITH TIME ZONE,
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Email Logs table (for tracking individual email sends)
+CREATE TABLE IF NOT EXISTS email_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    campaign_id VARCHAR(255),
+    merchant_id VARCHAR(255),
+    
+    customer_email VARCHAR(255) NOT NULL,
+    customer_name VARCHAR(255),
+    
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'delivered', 'opened', 'clicked', 'bounced', 'failed')),
+    resend_id VARCHAR(255),
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_merchants_shop_domain ON merchants(shop_domain);
 CREATE INDEX IF NOT EXISTS idx_merchants_is_active ON merchants(is_active);
@@ -236,11 +275,230 @@ END;
 $$ language 'plpgsql';
 
 -- Triggers for auto-updating timestamps
-CREATE TRIGGER update_merchants_updated_at BEFORE UPDATE ON merchants FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_store_snapshots_updated_at BEFORE UPDATE ON store_snapshots FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_ai_analyses_updated_at BEFORE UPDATE ON ai_analyses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_fix_actions_updated_at BEFORE UPDATE ON fix_actions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_sync_jobs_updated_at BEFORE UPDATE ON sync_jobs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_health_history_updated_at BEFORE UPDATE ON health_history FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_webhook_events_updated_at BEFORE UPDATE ON webhook_events FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_ai_call_logs_updated_at BEFORE UPDATE ON ai_call_logs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_merchants_updated_at BEFORE UPDATE ON merchants FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_store_snapshots_updated_at BEFORE UPDATE ON store_snapshots FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_ai_analyses_updated_at BEFORE UPDATE ON ai_analyses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_fix_actions_updated_at BEFORE UPDATE ON fix_actions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_sync_jobs_updated_at BEFORE UPDATE ON sync_jobs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_health_history_updated_at BEFORE UPDATE ON health_history FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_webhook_events_updated_at BEFORE UPDATE ON webhook_events FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_ai_call_logs_updated_at BEFORE UPDATE ON ai_call_logs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_email_campaigns_updated_at BEFORE UPDATE ON email_campaigns FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_email_logs_updated_at BEFORE UPDATE ON email_logs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Email indexes
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_merchant_id ON email_campaigns(merchant_id);
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_status ON email_campaigns(status);
+CREATE INDEX IF NOT EXISTS idx_email_logs_campaign_id ON email_logs(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_email_logs_merchant_id ON email_logs(merchant_id);
+CREATE INDEX IF NOT EXISTS idx_email_logs_status ON email_logs(status);
+
+-- ──────────────────────────────────────────────────────────────────────────────
+-- ADS TABLES
+-- ──────────────────────────────────────────────────────────────────────────────
+
+-- Connected ad accounts (Meta/Google)
+CREATE TABLE IF NOT EXISTS ad_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+    platform VARCHAR(20) NOT NULL CHECK (platform IN ('meta', 'google')),
+    account_id VARCHAR(100) NOT NULL,
+    account_name VARCHAR(255),
+    access_token TEXT,
+    refresh_token TEXT,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'disconnected', 'expired')),
+    synced_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Ad campaigns
+CREATE TABLE IF NOT EXISTS ad_campaigns (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+    ad_account_id UUID REFERENCES ad_accounts(id) ON DELETE SET NULL,
+    platform_campaign_id VARCHAR(100) UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    objective VARCHAR(50) CHECK (objective IN ('conversions', 'traffic', 'catalog_sales', 'awareness', 'engagement')),
+    status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'paused', 'archived')),
+    daily_budget DECIMAL(15,2),
+    total_spend DECIMAL(15,2) DEFAULT 0,
+    revenue DECIMAL(15,2) DEFAULT 0,
+    roas DECIMAL(10,2) DEFAULT 0,
+    start_date DATE,
+    end_date DATE,
+    ai_generated BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Ad performance snapshots (daily)
+CREATE TABLE IF NOT EXISTS ad_performance (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    campaign_id UUID NOT NULL REFERENCES ad_campaigns(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    impressions INTEGER DEFAULT 0,
+    clicks INTEGER DEFAULT 0,
+    spend DECIMAL(15,2) DEFAULT 0,
+    conversions INTEGER DEFAULT 0,
+    revenue DECIMAL(15,2) DEFAULT 0,
+    ctr DECIMAL(10,2) DEFAULT 0,
+    cpc DECIMAL(10,2) DEFAULT 0,
+    roas DECIMAL(10,2) DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(campaign_id, date)
+);
+
+-- AI ad suggestions
+CREATE TABLE IF NOT EXISTS ad_suggestions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+    campaign_id UUID REFERENCES ad_campaigns(id) ON DELETE SET NULL,
+    type VARCHAR(50) CHECK (type IN ('budget', 'audience', 'creative', 'pause', 'scale')),
+    title VARCHAR(255),
+    description TEXT,
+    expected_impact VARCHAR(50),
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'applied', 'dismissed')),
+    ai_reasoning TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+
+-- ──────────────────────────────────────────────────────────────────────────────
+-- SEO TABLES
+-- ──────────────────────────────────────────────────────────────────────────────
+
+-- SEO audits
+CREATE TABLE IF NOT EXISTS seo_audits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+    overall_score INTEGER DEFAULT 0 CHECK (overall_score >= 0 AND overall_score <= 100),
+    page_speed_score INTEGER CHECK (page_speed_score >= 0 AND page_speed_score <= 100),
+    meta_score INTEGER CHECK (meta_score >= 0 AND meta_score <= 100),
+    content_score INTEGER CHECK (content_score >= 0 AND content_score <= 100),
+    structure_score INTEGER CHECK (structure_score >= 0 AND structure_score <= 100),
+    mobile_score INTEGER CHECK (mobile_score >= 0 AND mobile_score <= 100),
+    issues_count INTEGER DEFAULT 0,
+    critical_count INTEGER DEFAULT 0,
+    warning_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- SEO issues found during audit
+CREATE TABLE IF NOT EXISTS seo_issues (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    audit_id UUID NOT NULL REFERENCES seo_audits(id) ON DELETE CASCADE,
+    severity VARCHAR(20) CHECK (severity IN ('critical', 'warning', 'info')),
+    category VARCHAR(50) CHECK (category IN ('meta', 'heading', 'image', 'content', 'speed', 'schema', 'url', 'mobile')),
+    page_url TEXT,
+    title VARCHAR(255),
+    description TEXT,
+    fix_suggestion TEXT,
+    auto_fixable BOOLEAN DEFAULT FALSE,
+    status VARCHAR(20) DEFAULT 'open' CHECK (status IN ('open', 'fixed', 'dismissed')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Keyword tracking
+CREATE TABLE IF NOT EXISTS seo_keywords (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+    product_id VARCHAR(100),
+    keyword VARCHAR(255) NOT NULL,
+    search_volume INTEGER,
+    competition VARCHAR(20) CHECK (competition IN ('low', 'medium', 'high')),
+    current_rank INTEGER,
+    previous_rank INTEGER,
+    target_url TEXT,
+    status VARCHAR(20) DEFAULT 'tracking' CHECK (status IN ('tracking', 'paused', 'dropped')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- SEO optimization history
+CREATE TABLE IF NOT EXISTS seo_optimizations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+    product_id VARCHAR(100),
+    type VARCHAR(50) CHECK (type IN ('title', 'description', 'meta', 'alt_text', 'heading', 'schema')),
+    old_value TEXT,
+    new_value TEXT,
+    ai_reasoning TEXT,
+    applied BOOLEAN DEFAULT FALSE,
+    applied_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- PageSpeed history
+CREATE TABLE IF NOT EXISTS seo_pagespeed_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    performance_score INTEGER CHECK (performance_score >= 0 AND performance_score <= 100),
+    accessibility_score INTEGER CHECK (accessibility_score >= 0 AND accessibility_score <= 100),
+    seo_score INTEGER CHECK (seo_score >= 0 AND seo_score <= 100),
+    first_contentful_paint DECIMAL(6,2),
+    largest_contentful_paint DECIMAL(6,2),
+    cumulative_layout_shift DECIMAL(5,3),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Competitor analysis
+CREATE TABLE IF NOT EXISTS seo_competitors (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+    domain VARCHAR(255) NOT NULL,
+    name VARCHAR(255),
+    seo_score INTEGER,
+    traffic_estimate INTEGER,
+    keyword_overlap INTEGER,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Schema markup store
+CREATE TABLE IF NOT EXISTS seo_schema_markup (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+    page_url TEXT NOT NULL,
+    schema_type VARCHAR(100),
+    schema_json JSONB,
+    applied BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+
+-- Ads & SEO Indexes
+CREATE INDEX IF NOT EXISTS idx_ad_accounts_merchant_id ON ad_accounts(merchant_id);
+CREATE INDEX IF NOT EXISTS idx_ad_accounts_platform ON ad_accounts(platform);
+CREATE INDEX IF NOT EXISTS idx_ad_campaigns_merchant_id ON ad_campaigns(merchant_id);
+CREATE INDEX IF NOT EXISTS idx_ad_campaigns_ad_account_id ON ad_campaigns(ad_account_id);
+CREATE INDEX IF NOT EXISTS idx_ad_campaigns_status ON ad_campaigns(status);
+CREATE INDEX IF NOT EXISTS idx_ad_performance_campaign_id ON ad_performance(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_ad_performance_date ON ad_performance(date);
+CREATE INDEX IF NOT EXISTS idx_ad_suggestions_merchant_id ON ad_suggestions(merchant_id);
+CREATE INDEX IF NOT EXISTS idx_ad_suggestions_type ON ad_suggestions(type);
+CREATE INDEX IF NOT EXISTS idx_seo_audits_merchant_id ON seo_audits(merchant_id);
+CREATE INDEX IF NOT EXISTS idx_seo_audits_created_at ON seo_audits(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_seo_issues_audit_id ON seo_issues(audit_id);
+CREATE INDEX IF NOT EXISTS idx_seo_issues_severity ON seo_issues(severity);
+CREATE INDEX IF NOT EXISTS idx_seo_issues_status ON seo_issues(status);
+CREATE INDEX IF NOT EXISTS idx_seo_keywords_merchant_id ON seo_keywords(merchant_id);
+CREATE INDEX IF NOT EXISTS idx_seo_keywords_keyword ON seo_keywords(keyword);
+CREATE INDEX IF NOT EXISTS idx_seo_keywords_status ON seo_keywords(status);
+CREATE INDEX IF NOT EXISTS idx_seo_optimizations_merchant_id ON seo_optimizations(merchant_id);
+CREATE INDEX IF NOT EXISTS idx_seo_pagespeed_merchant_id ON seo_pagespeed_history(merchant_id);
+CREATE INDEX IF NOT EXISTS idx_seo_competitors_merchant_id ON seo_competitors(merchant_id);
+CREATE INDEX IF NOT EXISTS idx_seo_schema_merchant_id ON seo_schema_markup(merchant_id);
+
+-- Triggers for auto-updating timestamps on new tables
+CREATE OR REPLACE TRIGGER update_ad_accounts_updated_at BEFORE UPDATE ON ad_accounts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_ad_campaigns_updated_at BEFORE UPDATE ON ad_campaigns FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_ad_suggestions_updated_at BEFORE UPDATE ON ad_suggestions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_seo_keywords_updated_at BEFORE UPDATE ON seo_keywords FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_seo_competitors_updated_at BEFORE UPDATE ON seo_competitors FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_seo_schema_markup_updated_at BEFORE UPDATE ON seo_schema_markup FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

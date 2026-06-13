@@ -44,7 +44,7 @@ export function shopifyHmac(req, res, next) {
   }
 
   const digest = crypto
-    .createHmac('sha256', config.shopify.apiSecret)
+    .createHmac('sha256', config.shopify.webhookSecret)
     .update(body, 'utf8')
     .digest('base64');
 

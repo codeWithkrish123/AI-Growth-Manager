@@ -19,8 +19,8 @@ const defaultOptions = {
   },
 };
 
-// ─── Analysis Queue ───────────────────────────────────────────────────────────
-export const analysisQueue = new Queue('ai-analysis', defaultOptions);
+// ─── Sync Queue (exported for webhook processor) ─────────────────────────────
+export const syncQueue = new Queue('store-sync', defaultOptions);
 
 export async function queueAnalysis(shopDomain, snapshotId) {
   const job = await analysisQueue.add('analyze-store', { shopDomain, snapshotId }, {
@@ -58,10 +58,16 @@ export function startSyncWorker() {
       logger.info({ shopDomain, syncJobId }, 'Processing sync job');
 
       try {
-        // Use Admin API Access Token
-        const accessToken = process.env.ADMIN_API_ACCESS_TOKEN;
+        // Get merchant's stored access token (falls back to admin token)
+        const merchant = await MerchantModel.findOne({ shopDomain });
+        if (!merchant) throw new Error('Merchant not found');
+
+        let accessToken = merchant.getAccessToken();
         if (!accessToken) {
-          throw new Error('Admin API token not configured');
+          accessToken = process.env.ADMIN_API_ACCESS_TOKEN;
+        }
+        if (!accessToken) {
+          throw new Error('No valid access token found for this store. Please reconnect via OAuth.');
         }
 
         // Fetch real data from Shopify with individual error handling
@@ -122,13 +128,7 @@ export function startSyncWorker() {
         healthScore -= inactiveProducts.length > 0 ? 5 : 0;
         healthScore = Math.max(0, Math.min(100, healthScore));
 
-        // Get merchant ID
-        const merchant = await MerchantModel.findOne({ shopDomain });
-        if (!merchant) {
-          throw new Error('Merchant not found');
-        }
-
-        // Create store snapshot
+        // Create store snapshot (reuse merchant from above)
         const snapshot = await StoreSnapshotModel.create({
           merchantId: merchant.id,
           shopDomain,
@@ -190,6 +190,6 @@ export function startSyncWorker() {
     logger.error({ jobId: job?.id, error: err.message }, 'Sync job failed');
   });
 
-  console.log('✅ Sync worker started');
+  logger.info('Sync worker started and listening for jobs');
   return worker;
 }
