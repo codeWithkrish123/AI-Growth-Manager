@@ -1,7 +1,17 @@
 import { Resend } from 'resend';
 import { logger } from '../../utils/logger.js';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resend = null;
+
+function getResend() {
+  if (!process.env.RESEND_API_KEY) {
+    return null;
+  }
+  if (!resend) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'AI Growth Manager <onboarding@resend.dev>';
 
@@ -9,13 +19,14 @@ const FROM_EMAIL = process.env.EMAIL_FROM || 'AI Growth Manager <onboarding@rese
  * Send a single transactional email via Resend
  */
 export async function sendEmail({ to, subject, html, replyTo }) {
-  if (!process.env.RESEND_API_KEY) {
+  const resendClient = getResend();
+  if (!resendClient) {
     logger.warn('RESEND_API_KEY not configured — email sending is disabled');
     return { id: 'mock-id', simulated: true };
   }
 
   try {
-    const result = await resend.emails.send({
+    const result = await resendClient.emails.send({
       from: FROM_EMAIL,
       to,
       subject,
