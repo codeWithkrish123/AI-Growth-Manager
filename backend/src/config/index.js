@@ -32,11 +32,11 @@ export const config = {
   },
 
   shopify: {
-    apiKey:        required('SHOPIFY_API_KEY'),
-    apiSecret:     required('SHOPIFY_API_SECRET'),
+    apiKey:        process.env.SHOPIFY_API_KEY || 'default-key',
+    apiSecret:     process.env.SHOPIFY_API_SECRET || 'default-secret',
     webhookSecret: process.env.SHOPIFY_WEBHOOK_SECRET || 'temp-webhook-secret',
-    scopes:        required('SHOPIFY_SCOPES'),
-    appUrl:        required('APP_URL'),
+    scopes:        process.env.SHOPIFY_SCOPES || 'read_products,write_products,read_orders',
+    appUrl:        process.env.APP_URL || 'http://localhost:3001',
   },
 
   jwt: {
