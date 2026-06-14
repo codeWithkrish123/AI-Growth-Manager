@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: ai-growth-backend
+    runtime: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: SHOPIFY_API_KEY
+        sync: false
+      - key: SHOPIFY_API_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: POSTGRES_URI
+        fromDatabase:
+          name: ai-growth-db
+          property: connectionString
+    connects:
+      - ai-growth-db
+
+  - type: static
+    name: ai-growth-frontend
+    runtime: static
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: ai-growth-backend
+          property: url
+
+databases:
+  - name: ai-growth-db
+    plan: free
+    databaseName: ai_growth_manager
