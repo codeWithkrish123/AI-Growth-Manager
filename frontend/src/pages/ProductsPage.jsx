@@ -17,6 +17,8 @@ export default function ProductsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
   const [formData, setFormData] = useState({ title: '', price: '', description: '', images: [] });
+  const [optimizingId, setOptimizingId] = useState(null);
+  const [menuOpenId, setMenuOpenId] = useState(null);
 
   const toggleDark = () => {
     const next = !isDark; setIsDark(next)
@@ -78,6 +80,17 @@ export default function ProductsPage() {
     Promise.all(readers).then(images => {
       setFormData(prev => ({ ...prev, images: [...prev.images, ...images] }));
     });
+  };
+
+  const handleOptimize = async (product) => {
+    try {
+      setOptimizingId(product.id);
+      console.log('Optimizing product:', product.id);
+    } catch (e) {
+      console.error('Optimization failed:', e);
+    } finally {
+      setOptimizingId(null);
+    }
   };
 
   const filtered = products.filter(p =>
@@ -225,9 +238,18 @@ export default function ProductsPage() {
                         </td>
                         <td className="text-right">
                           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button className="btn-primary text-xs py-1.5 px-3">Optimize</button>
-                            <button className="btn-ghost text-xs p-1.5">
+                            <button onClick={() => handleOptimize(p)} disabled={optimizingId === p.id} className="btn-primary text-xs py-1.5 px-3">
+                              {optimizingId === p.id ? 'Optimizing...' : 'Optimize'}
+                            </button>
+                            <button onClick={() => setMenuOpenId(menuOpenId === p.id ? null : p.id)} className="btn-ghost text-xs p-1.5 relative">
                               <MoreVertical className="w-4 h-4" />
+                              {menuOpenId === p.id && (
+                                <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-2 w-40 z-50">
+                                  <button className="w-full text-left px-3 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 rounded">Edit</button>
+                                  <button className="w-full text-left px-3 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 rounded">View Details</button>
+                                  <button className="w-full text-left px-3 py-2 text-xs hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 rounded">Delete</button>
+                                </div>
+                              )}
                             </button>
                           </div>
                         </td>
