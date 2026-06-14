@@ -56,7 +56,6 @@ export default function Sidebar({ active, shop, onDarkModeToggle, isDark, mobile
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="font-medium text-white text-sm leading-none tracking-tight">GrowthAI</p>
-              <p className="text-[10px] text-blue-400 font-medium mt-0.5">by Stitch</p>
             </div>
           )}
           <button onClick={() => setCollapsed(c => !c)}

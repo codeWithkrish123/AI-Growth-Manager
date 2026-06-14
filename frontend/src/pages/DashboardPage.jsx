@@ -117,6 +117,8 @@ export default function DashboardPage() {
   const [isDark,        setIsDark]        = useState(() => document.documentElement.classList.contains('dark'))
   const [lastSynced,    setLastSynced]    = useState(null)
   const [toast,         setToast]         = useState(null)
+  const [searchQuery,   setSearchQuery]   = useState('')
+  const [notificationOpen, setNotificationOpen] = useState(false)
 
   const toggleDark = () => { const n = !isDark; setIsDark(n); document.documentElement.classList.toggle('dark', n); localStorage.setItem('theme', n ? 'dark' : 'light') }
   const showToast  = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3500) }
@@ -227,7 +229,13 @@ export default function DashboardPage() {
             {/* Search */}
             <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg w-52">
               <Search className="w-4 h-4 text-slate-400" />
-              <span className="text-sm text-slate-400">Search insights...</span>
+              <input 
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search insights..."
+                className="bg-transparent outline-none text-sm text-slate-700 w-full"
+              />
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -237,10 +245,25 @@ export default function DashboardPage() {
               Last 30 Days
             </button>
             {/* Notification */}
-            <button className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors">
-              <Bell className="w-5 h-5 text-slate-500" />
-              {problems.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setNotificationOpen(!notificationOpen)}
+                className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors"
+                title={`${dashData?.snapshot?.healthBreakdown?.productsWithoutImages || 0} issues detected`}>
+                <Bell className="w-5 h-5 text-slate-500" />
+                {(dashData?.analysis?.problems?.length > 0) && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+              </button>
+              {notificationOpen && dashData?.analysis?.problems && (
+                <div className="absolute right-0 top-10 bg-white border border-slate-200 rounded-lg shadow-lg p-2 w-72 max-h-64 overflow-y-auto z-50">
+                  <p className="text-xs font-bold text-slate-700 px-2 py-1">Issues ({dashData.analysis.problems.length})</p>
+                  {dashData.analysis.problems.slice(0, 5).map((p, i) => (
+                    <div key={i} className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 rounded">
+                      • {p.title || p.description}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             {/* Action buttons */}
             <button onClick={handleAnalyze} disabled={analyzing}
               className="btn-ghost text-xs disabled:opacity-50">

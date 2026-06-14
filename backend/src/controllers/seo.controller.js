@@ -29,10 +29,6 @@ export async function runSeoAudit(req, res) {
     let products = [];
     if (snapshotResult.rows.length > 0 && snapshotResult.rows[0].top_products) {
       products = snapshotResult.rows[0].top_products;
-    } else {
-      // Fallback to basic products list if no snapshot
-      const pResult = await query('SELECT title, body_html FROM store_snapshots WHERE shop_domain = $1 LIMIT 10', [merchant.shop_domain]);
-      products = pResult.rows;
     }
 
     let auditData = { overall_score: 70, page_speed_score: 65, meta_score: 65, content_score: 70, structure_score: 70, mobile_score: 70, issues: [] };
@@ -62,7 +58,13 @@ export async function runSeoAudit(req, res) {
     if (products.length > 0 && openai) {
       try {
         const { systemPrompt, userPrompt } = buildSeoAuditPrompt({ products, shopInfo: merchant.shop_info });
-        const completion = await openai.chat.completions.create({
+        
+        // Timeout after 8 seconds to avoid 15s request abort
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('AI timeout')), 8000)
+        );
+        
+        const aiPromise = openai.chat.completions.create({
           model: 'gpt-4o-mini',
           messages: [
             { role: 'system', content: systemPrompt },
@@ -70,6 +72,8 @@ export async function runSeoAudit(req, res) {
           ],
           response_format: { type: 'json_object' }
         });
+        
+        const completion = await Promise.race([aiPromise, timeoutPromise]);
         const parsed = JSON.parse(completion.choices[0].message.content);
         auditData = {
           ...auditData,
@@ -80,7 +84,12 @@ export async function runSeoAudit(req, res) {
           issues:           parsed.issues          || [],
         };
       } catch (aiErr) {
-        logger.warn({ err: aiErr }, 'AI SEO Audit failed, using fallback');
+        // Skip AI if quota exceeded or timeout - use fallback scores
+        if (aiErr.status === 429 || aiErr.message.includes('timeout')) {
+          logger.warn({ err: aiErr.message || aiErr.code }, 'AI skipped (quota or timeout), using fallback scores');
+        } else {
+          logger.warn({ err: aiErr }, 'AI SEO Audit failed, using fallback');
+        }
       }
     }
 
