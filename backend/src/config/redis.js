@@ -1,31 +1,37 @@
 import Redis from 'ioredis';
 import { logger } from '../utils/logger.js';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const REDIS_URL = process.env.REDIS_URL;
+const isRedisEnabled = !!REDIS_URL;
 
-// ── Primary connection (used by BullMQ workers & queues) ─────────────────────
-export const redisConnection = new Redis(REDIS_URL, {
-  maxRetriesPerRequest: null, // Required by BullMQ
-  enableReadyCheck: false,    // Required by BullMQ
-  lazyConnect: true,
-});
+let redisConnection = null;
+let redisCache = null;
 
-redisConnection.on('connect', () => logger.info('Redis connected'));
-redisConnection.on('ready',   () => logger.info('Redis ready'));
-redisConnection.on('error',   (err) => logger.error({ err }, 'Redis connection error'));
-redisConnection.on('close',   () => logger.warn('Redis connection closed'));
-redisConnection.on('reconnecting', () => logger.info('Redis reconnecting...'));
+if (isRedisEnabled) {
+  redisConnection = new Redis(REDIS_URL, {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+    lazyConnect: true,
+  });
+  redisConnection.on('connect', () => logger.info('Redis connected'));
+  redisConnection.on('ready',   () => logger.info('Redis ready'));
+  redisConnection.on('error',   (err) => logger.error({ err }, 'Redis connection error'));
+  redisConnection.on('close',   () => logger.warn('Redis connection closed'));
+  redisConnection.on('reconnecting', () => logger.debug('Redis reconnecting...'));
 
-// ── Cache connection (used for general key-value caching) ────────────────────
-export const redisCache = new Redis(REDIS_URL, {
-  lazyConnect: true,
-  keyPrefix: 'aigm:',
-});
+  redisCache = new Redis(REDIS_URL, {
+    lazyConnect: true,
+    keyPrefix: 'aigm:',
+  });
+  redisCache.on('error', (err) => logger.debug('Redis cache error', { err }));
+}
 
-redisCache.on('error', (err) => logger.error({ err }, 'Redis cache error'));
+export { redisConnection, redisCache, isRedisEnabled };
 
-// ── Health check helper ───────────────────────────────────────────────────────
 export async function redisHealthCheck() {
+  if (!isRedisEnabled) {
+    return { status: 'disabled' };
+  }
   try {
     const pong = await redisCache.ping();
     return { status: pong === 'PONG' ? 'healthy' : 'unhealthy' };
