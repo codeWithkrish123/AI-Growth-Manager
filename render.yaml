@@ -22,8 +22,6 @@ services:
         fromDatabase:
           name: ai-growth-db
           property: connectionString
-    connects:
-      - ai-growth-db
 
 databases:
   - name: ai-growth-db
