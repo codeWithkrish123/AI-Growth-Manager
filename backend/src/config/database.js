@@ -3,24 +3,23 @@ import { config } from './index.js';
 import { logger } from '../utils/logger.js';
 import { DatabaseErrorHandler, executeQueryWithLogging } from '../utils/databaseErrorHandler.js';
 
-// Connection pool configuration
-const poolConfig = {
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: String(process.env.DB_PASSWORD), // 🔥 force string
-  port: Number(process.env.DB_PORT),
-  
-  // Connection pooling settings
-  max: 20, // Maximum number of connections in pool
-  min: 5,  // Minimum number of connections in pool
-  idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
-  connectionTimeoutMillis: 10000, // Return error after 10 seconds if connection not established
-  
-  // Retry settings
-  retry: 3,
-  retryDelay: 1000,
-};
+// Connection pool configuration - support both POSTGRES_URI and individual vars
+const poolConfig = process.env.POSTGRES_URI 
+  ? { connectionString: process.env.POSTGRES_URI }
+  : {
+      user: process.env.DB_USER,
+      host: process.env.DB_HOST,
+      database: process.env.DB_NAME,
+      password: String(process.env.DB_PASSWORD),
+      port: Number(process.env.DB_PORT),
+    };
+
+Object.assign(poolConfig, {
+  max: 20,
+  min: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+});
 
 const pool = new Pool(poolConfig);
 
