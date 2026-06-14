@@ -156,7 +156,10 @@ export default function SEOPage() {
           <div className="flex items-center gap-2">
             <button onClick={handleRunAudit} disabled={auditing} className="btn-primary text-xs">
               {auditing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
-              {auditing ? 'Auditing...' : 'Run SEO Audit'}
+              {auditing ? 'Auditing...' : 'Run Audit'}
+            </button>
+            <button onClick={fetchAllData} className="btn-ghost text-xs">
+              <RefreshCw className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState } from 'react'
 import { User, Shield, Zap, Store, LogOut, Menu, ChevronRight, ExternalLink, Bell, Settings } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'
 
 const AI_SETTINGS_KEY = 'aiSettings'
 
@@ -45,44 +45,53 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] flex">
+    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--c-bg)' }}>
       <Sidebar active="settings" shop={shop} onDarkModeToggle={toggleDark} isDark={isDark}
         mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
 
-      <main className="flex-1 lg:ml-[var(--c-sidebar-w)] overflow-y-auto">
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-7 sticky top-0 z-10">
+      <main className="flex-1 lg:ml-[var(--c-sidebar-w)] overflow-y-auto scrollbar-hide">
+        {/* Header */}
+        <div className="sticky top-0 z-20 flex items-center justify-between px-7 py-4 border-b backdrop-blur-sm"
+          style={{ borderColor: 'var(--c-border)', background: 'var(--c-bg)' }}>
           <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-500"><Menu className="w-5 h-5" /></button>
-            <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4 text-slate-400" />
-              <h1 className="text-base font-semibold text-slate-900">Settings</h1>
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden" style={{ color: 'var(--c-text-muted)' }}>
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-lg font-black flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
+                <Settings className="w-5 h-5 text-purple-400" />
+                Settings
+              </h1>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-muted)' }}>
+                Manage your account, preferences, and security
+              </p>
             </div>
           </div>
-          <button onClick={() => { localStorage.clear(); navigate('/') }}
-            className="flex items-center gap-2 text-sm text-slate-500 hover:text-red-500 transition-colors">
-            <LogOut className="w-4 h-4" /> Sign Out
+          <button onClick={() => { localStorage.clear(); navigate('/') }} className="btn-ghost text-xs">
+            <LogOut className="w-3.5 h-3.5" />
+            Sign Out
           </button>
-        </header>
+        </div>
 
-        <div className="max-w-5xl mx-auto flex gap-6 p-6 md:p-8">
+        <div className="px-7 py-6 space-y-6">
           {/* Left nav */}
           <aside className="w-52 flex-shrink-0">
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-slate-100 text-center">
-                <div className="w-12 h-12 rounded-full bg-primary/10 text-primary font-bold text-xl flex items-center justify-center mx-auto mb-2">
+            <div className="rounded-xl border backdrop-blur-sm p-4 space-y-2" style={{ borderColor: 'var(--c-border)', background: 'var(--c-bg)' }}>
+              <div className="p-4 text-center rounded-lg" style={{ background: 'var(--c-border)' }}>
+                <div className="w-10 h-10 rounded-full bg-purple-400/20 text-purple-400 font-bold text-sm flex items-center justify-center mx-auto mb-2">
                   {shopName.charAt(0).toUpperCase()}
                 </div>
-                <p className="text-sm font-semibold text-slate-900 truncate">{shopName}</p>
-                <p className="text-xs text-slate-400">Free Plan</p>
+                <p className="text-sm font-bold" style={{ color: 'var(--c-text)' }}>{shopName}</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--c-text-muted)' }}>Free Plan</p>
               </div>
-              <nav className="p-2 space-y-0.5">
+              <nav className="space-y-1">
                 {SECTIONS.map(s => (
                   <button key={s.id} onClick={() => setActiveSection(s.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                      ${activeSection === s.id ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                      ${activeSection === s.id ? 'bg-purple-400/20 text-purple-400' : 'hover:opacity-70'}`}
+                    style={{ color: activeSection === s.id ? undefined : 'var(--c-text-muted)' }}>
                     <s.icon className="w-4 h-4 flex-shrink-0" />
                     <span className="flex-1 text-left">{s.label}</span>
-                    <ChevronRight className="w-3.5 h-3.5 opacity-30" />
                   </button>
                 ))}
               </nav>
@@ -92,10 +101,10 @@ export default function SettingsPage() {
           {/* Content */}
           <section className="flex-1 space-y-6">
             {activeSection === 'store' && (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
-                <h2 className="text-base font-bold text-slate-900 mb-1">Store Connection</h2>
-                <p className="text-sm text-slate-400 mb-8">Your connected Shopify store.</p>
-                <div className="space-y-0 divide-y divide-slate-100">
+              <div className="rounded-xl border backdrop-blur-sm p-6" style={{ borderColor: 'var(--c-border)', background: 'var(--c-bg)' }}>
+                <h2 className="text-base font-black mb-1" style={{ color: 'var(--c-text)' }}>Store Connection</h2>
+                <p className="text-xs mb-6" style={{ color: 'var(--c-text-muted)' }}>Your connected Shopify store.</p>
+                <div className="space-y-3 divide-y" style={{ borderColor: 'var(--c-border)' }}>
                   {[
                     { label: 'Store Domain', value: shop || 'Not connected' },
                     { label: 'Store Name',   value: shopName || '—' },
