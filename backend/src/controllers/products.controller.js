@@ -93,3 +93,33 @@ export async function optimizeProduct(req, res) {
     logger.error({ err, shopDomain: req.params.shopDomain }, 'Failed to optimize product');
     return error(res, err.message || 'Failed to optimize product', 500);
   }
+}
+
+/**
+ * Delete product from Shopify
+ * DELETE /api/:shopDomain/products/:productId
+ */
+export async function deleteProduct(req, res) {
+  try {
+    const { merchant } = req;
+    const { shopDomain, productId } = req.params;
+
+    const accessToken = merchant.getAccessToken();
+    if (!accessToken) {
+      return error(res, 'No access token', 401);
+    }
+
+    const { deleteProduct: deleteShopifyProduct } = await import('../services/shopify/products.service.js');
+    await deleteShopifyProduct(shopDomain, accessToken, productId);
+
+    // Invalidate cache
+    const { shopifyCache } = await import('../utils/cache.js');
+    shopifyCache.delete(`products_${shopDomain}`);
+
+    logger.info({ shopDomain, productId }, 'Product deleted');
+    return success(res, { message: 'Product deleted successfully' });
+  } catch (err) {
+    logger.error({ err, productId: req.params.productId }, 'Failed to delete product');
+    return error(res, err.message || 'Failed to delete product', 500);
+  }
+}
