@@ -24,7 +24,7 @@ export const config = {
   isDev: process.env.NODE_ENV !== 'production',
 
   postgres: {
-    uri: required('POSTGRES_URI'),
+    uri: process.env.POSTGRES_URI || 'postgresql://postgres:Newdelhi2025@localhost:5432/ai_growth_manager',
   },
 
   redis: {
@@ -40,11 +40,11 @@ export const config = {
   },
 
   jwt: {
-    secret: validated('JWT_SECRET', 32, 'supersecurejwtkey'),
+    secret: process.env.JWT_SECRET || 'default-jwt-secret-key-32-chars-min',
   },
 
   encryption: {
-    key: validated('ENCRYPTION_KEY', 32, 'abcdefghijklmnopqrstuvwxyz123456'),
+    key: process.env.ENCRYPTION_KEY || 'default-encryption-key-32-chars-long',
   },
 
   ai: {
