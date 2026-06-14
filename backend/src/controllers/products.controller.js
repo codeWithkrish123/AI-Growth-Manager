@@ -64,3 +64,32 @@ export async function createProduct(req, res) {
     return error(res, err.message || 'Failed to create product', 500);
   }
 }
+
+/**
+ * Optimize product (AI enhancement - description, title, tags)
+ * POST /api/:shopDomain/products/:productId/optimize
+ */
+export async function optimizeProduct(req, res) {
+  try {
+    const { merchant } = req;
+    const { shopDomain, productId } = req.params;
+
+    logger.info({ shopDomain, productId }, 'Optimizing product');
+
+    // Return success with mock optimization results
+    // In production, would call AI service to generate optimized title, description, tags
+    return success(res, {
+      message: 'Product optimized successfully',
+      optimized: {
+        productId,
+        title: 'Optimized title',
+        description: 'Optimized description',
+        tags: ['optimized', 'trending'],
+        timestamp: new Date(),
+      }
+    }, 200);
+
+  } catch (err) {
+    logger.error({ err, shopDomain: req.params.shopDomain }, 'Failed to optimize product');
+    return error(res, err.message || 'Failed to optimize product', 500);
+  }

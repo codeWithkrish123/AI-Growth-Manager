@@ -13,7 +13,7 @@ import {
   triggerAnalysis,
   getProducts,
 } from '../controllers/dashboard.controller.js';
-import { createProduct } from '../controllers/products.controller.js';
+import { createProduct, optimizeProduct } from '../controllers/products.controller.js';
 import {
   triggerSync, getSyncStatus,
   getLatestAnalysis,
@@ -82,6 +82,7 @@ api.use('/:shopDomain', authMiddleware);   // all /api/:shopDomain routes need a
 api.get('/:shopDomain/dashboard',        getDashboard);
 api.get('/:shopDomain/products',         getProducts);
 api.post('/:shopDomain/products/create', createProduct);
+api.post('/:shopDomain/products/:productId/optimize', optimizeProduct);
 
 // Sync
 api.post('/:shopDomain/sync',            triggerSync);

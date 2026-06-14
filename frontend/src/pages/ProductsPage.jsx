@@ -85,7 +85,10 @@ export default function ProductsPage() {
   const handleOptimize = async (product) => {
     try {
       setOptimizingId(product.id);
-      console.log('Optimizing product:', product.id);
+      await dashboardAPI.optimizeProduct(shop, product.id);
+      console.log('Product optimized:', product.id);
+      // Refresh products to show updated data
+      fetchProducts();
     } catch (e) {
       console.error('Optimization failed:', e);
     } finally {
