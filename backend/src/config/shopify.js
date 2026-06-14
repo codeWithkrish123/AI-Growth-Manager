@@ -10,10 +10,10 @@ function required(key) {
 
 export const config = {
   shopify: {
-    apiKey: required('SHOPIFY_API_KEY'),
-    apiSecret: required('SHOPIFY_API_SECRET'),
-    scopes: required('SHOPIFY_SCOPES').split(','),
-    appUrl: required('APP_URL'),
+    apiKey: process.env.SHOPIFY_API_KEY || 'default-key',
+    apiSecret: process.env.SHOPIFY_API_SECRET || 'default-secret',
+    scopes: (process.env.SHOPIFY_SCOPES || 'read_products,write_products,read_orders').split(','),
+    appUrl: process.env.APP_URL || 'http://localhost:3001',
   },
 };
 
