@@ -126,11 +126,53 @@ export default function OnboardingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-cyan-400 via-blue-500 to-slate-900 flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
-            {/* Animated Background Orbs */}
-            <div className="absolute top-0 left-0 w-96 h-96 bg-cyan-300/30 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-900/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-            <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-cyan-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
+            {/* Neural Network Background */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <filter id="glow">
+                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <g opacity="0.15">
+                        {/* Neural nodes and connections */}
+                        <circle cx="20%" cy="30%" r="4" fill="#6366f1" filter="url(#glow)">
+                            <animate attributeName="r" values="4;6;4" dur="3s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="80%" cy="20%" r="4" fill="#3b82f6" filter="url(#glow)">
+                            <animate attributeName="r" values="4;6;4" dur="3.5s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="15%" cy="70%" r="4" fill="#06b6d4" filter="url(#glow)">
+                            <animate attributeName="r" values="4;6;4" dur="4s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="85%" cy="75%" r="4" fill="#8b5cf6" filter="url(#glow)">
+                            <animate attributeName="r" values="4;6;4" dur="3.2s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="50%" cy="50%" r="5" fill="#6366f1" filter="url(#glow)">
+                            <animate attributeName="r" values="5;7;5" dur="2.5s" repeatCount="indefinite"/>
+                        </circle>
+                        
+                        {/* Connecting lines */}
+                        <line x1="20%" y1="30%" x2="50%" y2="50%" stroke="#6366f1" strokeWidth="1.5" opacity="0.6">
+                            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3s" repeatCount="indefinite"/>
+                        </line>
+                        <line x1="80%" y1="20%" x2="50%" y2="50%" stroke="#3b82f6" strokeWidth="1.5" opacity="0.6">
+                            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.5s" repeatCount="indefinite"/>
+                        </line>
+                        <line x1="15%" y1="70%" x2="50%" y2="50%" stroke="#06b6d4" strokeWidth="1.5" opacity="0.6">
+                            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4s" repeatCount="indefinite"/>
+                        </line>
+                        <line x1="85%" y1="75%" x2="50%" y2="50%" stroke="#8b5cf6" strokeWidth="1.5" opacity="0.6">
+                            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.2s" repeatCount="indefinite"/>
+                        </line>
+                    </g>
+                </svg>
+            </div>
 
             <AnimatePresence mode="wait">
                 {!isConnecting ? (
@@ -140,7 +182,7 @@ export default function OnboardingPage() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -20, scale: 0.95 }}
                         transition={{ duration: 0.6, ease: "easeOut" }}
-                        className="max-w-[600px] w-full bg-white/10 backdrop-blur-xl rounded-3xl p-8 sm:p-12 shadow-2xl border border-white/20 flex flex-col items-center text-center relative z-10"
+                        className="max-w-[600px] w-full bg-white rounded-3xl p-8 sm:p-12 shadow-xl border border-slate-100 flex flex-col items-center text-center relative z-10"
                     >
                         {/* Icon Header */}
                         <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center shadow-lg border border-indigo-100 mb-8">
@@ -148,12 +190,12 @@ export default function OnboardingPage() {
                         </div>
 
                         {/* Heading */}
-                        <h1 className="text-5xl font-black text-white tracking-tight mb-4">
+                        <h1 className="text-5xl font-black text-slate-900 tracking-tight mb-4">
                             Connect Your Store
                         </h1>
 
                         {/* Subtext */}
-                        <p className="text-blue-100 text-base font-medium leading-relaxed mb-12 max-w-sm mx-auto">
+                        <p className="text-slate-600 text-base font-medium leading-relaxed mb-12 max-w-sm mx-auto">
                             Your AI Growth Engine will analyze your revenue, customers, and performance in real-time.
                         </p>
 
@@ -188,7 +230,7 @@ export default function OnboardingPage() {
                                 disabled={!storeUrl}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="w-full h-[64px] rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-600 hover:from-cyan-300 hover:to-blue-700 text-white font-black text-base uppercase tracking-wide shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                                className="w-full h-[64px] rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-base uppercase tracking-wide shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                             >
                                 Activate AI Analysis
                                 <ArrowRight className="w-5 h-5" />
