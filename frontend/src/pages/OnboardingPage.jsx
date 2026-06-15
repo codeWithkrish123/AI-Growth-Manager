@@ -126,11 +126,11 @@ export default function OnboardingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
+        <div className="min-h-screen bg-gradient-to-br from-cyan-400 via-blue-500 to-slate-900 flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
             {/* Animated Background Orbs */}
-            <div className="absolute top-10 left-10 w-72 h-72 bg-sky-300/20 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-300/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-            <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-indigo-300/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+            <div className="absolute top-0 left-0 w-96 h-96 bg-cyan-300/30 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-900/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+            <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-cyan-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
 
             <AnimatePresence mode="wait">
                 {!isConnecting ? (
@@ -140,7 +140,7 @@ export default function OnboardingPage() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -20, scale: 0.95 }}
                         transition={{ duration: 0.6, ease: "easeOut" }}
-                        className="max-w-[600px] w-full bg-white rounded-[32px] p-8 sm:p-12 shadow-xl border border-slate-100 flex flex-col items-center text-center relative z-10"
+                        className="max-w-[600px] w-full bg-white/10 backdrop-blur-xl rounded-3xl p-8 sm:p-12 shadow-2xl border border-white/20 flex flex-col items-center text-center relative z-10"
                     >
                         {/* Icon Header */}
                         <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center shadow-lg border border-indigo-100 mb-8">
@@ -148,12 +148,12 @@ export default function OnboardingPage() {
                         </div>
 
                         {/* Heading */}
-                        <h1 className="text-5xl font-black text-slate-900 tracking-tight mb-4">
+                        <h1 className="text-5xl font-black text-white tracking-tight mb-4">
                             Connect Your Store
                         </h1>
 
                         {/* Subtext */}
-                        <p className="text-slate-600 text-base font-medium leading-relaxed mb-12 max-w-sm mx-auto">
+                        <p className="text-blue-100 text-base font-medium leading-relaxed mb-12 max-w-sm mx-auto">
                             Your AI Growth Engine will analyze your revenue, customers, and performance in real-time.
                         </p>
 
@@ -188,7 +188,7 @@ export default function OnboardingPage() {
                                 disabled={!storeUrl}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="w-full h-[64px] rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-black text-base uppercase tracking-wide shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                                className="w-full h-[64px] rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-600 hover:from-cyan-300 hover:to-blue-700 text-white font-black text-base uppercase tracking-wide shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                             >
                                 Activate AI Analysis
                                 <ArrowRight className="w-5 h-5" />
