@@ -126,10 +126,10 @@ export default function OnboardingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#F0F7FF] flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
-            {/* Soft Ambient Background Glows */}
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-400/10 rounded-full blur-[120px] pointer-events-none animate-pulse" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-400/10 rounded-full blur-[120px] pointer-events-none animate-pulse" />
+        <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
+            {/* Background Glows */}
+            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-400/5 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-400/5 rounded-full blur-[120px] pointer-events-none" />
 
             <AnimatePresence mode="wait">
                 {!isConnecting ? (
@@ -139,32 +139,32 @@ export default function OnboardingPage() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -20, scale: 0.95 }}
                         transition={{ duration: 0.6, ease: "easeOut" }}
-                        className="max-w-[600px] w-full bg-white/50 backdrop-blur-sm rounded-[40px] p-8 sm:p-12 shadow-[0_20px_50px_-10px_rgba(30,58,138,0.1)] border border-white/50 flex flex-col items-center text-center relative z-10"
+                        className="max-w-[600px] w-full bg-white rounded-[32px] p-8 sm:p-12 shadow-xl border border-slate-100 flex flex-col items-center text-center relative z-10"
                     >
-                        {/* 1. Icon Header */}
+                        {/* Icon Header */}
                         <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center shadow-lg border border-indigo-100 mb-8">
                             <Sparkles className="w-10 h-10 text-indigo-600" />
                         </div>
 
-                        {/* 2. Heading */}
+                        {/* Heading */}
                         <h1 className="text-5xl font-black text-slate-900 tracking-tight mb-4">
                             Connect Your Store
                         </h1>
 
-                        {/* 3. Subtext */}
-                        <p className="text-slate-500 text-lg font-medium leading-relaxed mb-12 max-w-sm mx-auto">
+                        {/* Subtext */}
+                        <p className="text-slate-600 text-base font-medium leading-relaxed mb-12 max-w-sm mx-auto">
                             Your AI Growth Engine will analyze your revenue, customers, and performance in real-time.
                         </p>
 
-                        {/* 4. Shopify Store URL Input */}
+                        {/* Store URL Input */}
                         <form onSubmit={handleConnect} className="w-full flex flex-col items-center gap-6">
                             <div className="w-full space-y-2 text-left">
-                                <label className="text-[10px] font-black uppercase tracking-[0.2em] ml-6 text-slate-400">
+                                <label className="text-[10px] font-black uppercase tracking-widest ml-1 text-slate-400">
                                     Shopify Store URL
                                 </label>
-                                <div className={`relative flex items-center h-[72px] transition-all duration-300 ${isFocused ? 'ring-8 ring-indigo-600/5 border-indigo-600 bg-white' : 'border-slate-200 bg-white shadow-sm hover:border-slate-300'} border-2 rounded-[24px] overflow-hidden`}>
-                                    <div className="pl-6 pr-3">
-                                        <ShoppingBag className={`w-6 h-6 ${isFocused ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                <div className={`relative flex items-center h-[64px] transition-all duration-300 ${isFocused ? 'ring-4 ring-indigo-500/10 border-indigo-600' : 'border-slate-200'} border-2 rounded-2xl overflow-hidden bg-white`}>
+                                    <div className="pl-5 pr-3">
+                                        <ShoppingBag className={`w-5 h-5 ${isFocused ? 'text-indigo-600' : 'text-slate-400'}`} />
                                     </div>
                                     <input
                                         type="text"
@@ -173,24 +173,24 @@ export default function OnboardingPage() {
                                         onChange={(e) => setStoreUrl(e.target.value)}
                                         onFocus={() => setIsFocused(true)}
                                         onBlur={() => setIsFocused(false)}
-                                        className="flex-1 bg-transparent border-none outline-none text-slate-900 font-bold text-lg placeholder:text-slate-300"
+                                        className="flex-1 bg-transparent border-none outline-none text-slate-900 font-bold text-base placeholder:text-slate-300"
                                     />
-                                    <div className="pr-6 text-slate-400 font-black text-xs uppercase tracking-[0.1em] pointer-events-none hidden sm:block">
+                                    <div className="pr-5 text-slate-400 font-bold text-sm uppercase pointer-events-none hidden sm:block">
                                         .myshopify.com
                                     </div>
                                 </div>
                             </div>
 
-                            {/* 5. Activate AI Analysis Button */}
+                            {/* Activate Button */}
                             <motion.button
                                 type="submit"
                                 disabled={!storeUrl}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="w-full h-[72px] rounded-[24px] bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-black text-lg uppercase tracking-[0.15em] shadow-2xl shadow-indigo-600/30 hover:shadow-indigo-600/40 transition-all flex items-center justify-center gap-4 group"
+                                className="w-full h-[64px] rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-base uppercase tracking-wide shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                             >
                                 Activate AI Analysis
-                                <ArrowRight className="w-6 h-6 group-hover:translate-x-1.5 transition-transform" />
+                                <ArrowRight className="w-5 h-5" />
                             </motion.button>
                         </form>
                     </motion.div>
