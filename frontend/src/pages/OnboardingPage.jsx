@@ -126,7 +126,7 @@ export default function OnboardingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
             {/* Background Glows */}
             <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-400/5 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-400/5 rounded-full blur-[120px] pointer-events-none" />
@@ -187,7 +187,7 @@ export default function OnboardingPage() {
                                 disabled={!storeUrl}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="w-full h-[64px] rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-base uppercase tracking-wide shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                                className="w-full h-[64px] rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-base uppercase tracking-wide shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                             >
                                 Activate AI Analysis
                                 <ArrowRight className="w-5 h-5" />
