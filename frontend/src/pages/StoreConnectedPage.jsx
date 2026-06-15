@@ -7,6 +7,7 @@ export default function StoreConnectedPage() {
     const navigate = useNavigate()
     const shop = localStorage.getItem('currentShop')
     const [progress, setProgress] = useState(0)
+    const [storeHandle, setStoreHandle] = useState(shop || '')
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -18,7 +19,7 @@ export default function StoreConnectedPage() {
     return (
         <div className="min-h-screen bg-[#F0F7FF] flex items-center justify-center p-6 relative overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-100/50 via-blue-50/50 to-transparent" />
-            
+
             <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -29,7 +30,15 @@ export default function StoreConnectedPage() {
                 </div>
 
                 <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Your store is connected!</h1>
-                <p className="text-slate-500 text-sm font-medium mb-8 font-mono">{shop}</p>
+
+                {/* Store Input */}
+                <div className="w-full mb-6">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block text-left ml-1">Store URL</label>
+                    <div className="relative border-2 border-slate-200 rounded-2xl p-1 focus-within:border-indigo-600">
+                        <input type="text" value={storeHandle} onChange={(e) => setStoreHandle(e.target.value)} placeholder="your-store" className="w-full px-5 py-4 bg-transparent outline-none font-bold text-slate-900" />
+                        <span className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs uppercase">.myshopify.com</span>
+                    </div>
+                </div>
 
                 <div className="w-full bg-slate-100 h-2 rounded-full mb-8 overflow-hidden">
                     <motion.div 
@@ -37,7 +46,7 @@ export default function StoreConnectedPage() {
                         style={{ width: `${progress}%` }}
                     />
                 </div>
-
+...
                 <div className="w-full space-y-3 mb-10 text-left">
                     {['Fetching Products', 'Analyzing SEO', 'Generating AI Report'].map((task, i) => (
                         <div key={task} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
