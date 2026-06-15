@@ -3,8 +3,10 @@ import { config } from './index.js';
 import { logger } from '../utils/logger.js';
 import { DatabaseErrorHandler, executeQueryWithLogging } from '../utils/databaseErrorHandler.js';
 
-// Connection pool configuration - support both POSTGRES_URI and individual vars
-const poolConfig = process.env.POSTGRES_URI 
+// Connection pool configuration - support DATABASE_URL, POSTGRES_URI, or individual vars
+const poolConfig = process.env.DATABASE_URL 
+  ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
+  : process.env.POSTGRES_URI 
   ? { connectionString: process.env.POSTGRES_URI }
   : {
       user: process.env.DB_USER,
