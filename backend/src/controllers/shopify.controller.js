@@ -144,14 +144,14 @@ export async function handleShopifyCallback(req, res) {
     }
 
     // Redirect to frontend with success using path parameter
-    const redirectUrl = `${process.env.FRONTEND_URL}/dashboard/${encodeURIComponent(shopDomain)}?success=true`;
+    const redirectUrl = `${config.frontendUrl}/dashboard/${encodeURIComponent(shopDomain)}?success=true`;
     res.redirect(redirectUrl);
 
   } catch (err) {
     logger.error({ err }, 'Shopify OAuth callback failed');
     
     // Redirect to frontend with error
-    const redirectUrl = `${process.env.FRONTEND_URL}/signin?error=auth_failed`;
+    const redirectUrl = `${config.frontendUrl}/signin?error=auth_failed`;
     res.redirect(redirectUrl);
   }
 }
@@ -270,7 +270,7 @@ export async function handleEmbeddedAppLaunch(req, res) {
     
     if (!shop || !hmac) {
       // No Shopify params, redirect to signin page
-      return res.redirect(`${process.env.FRONTEND_URL}/signin`);
+      return res.redirect(`${config.frontendUrl}/signin`);
     }
 
     const shopDomain = shop.replace('.myshopify.com', '').toLowerCase() + '.myshopify.com';
@@ -279,7 +279,7 @@ export async function handleEmbeddedAppLaunch(req, res) {
     const hmacVerified = verifyHmac(req.query, config.shopify.apiSecret);
     if (!hmacVerified) {
       logger.error({ shopDomain }, 'HMAC verification failed for embedded app launch');
-      return res.redirect(`${process.env.FRONTEND_URL}/signin?error=invalid_signature`);
+      return res.redirect(`${config.frontendUrl}/signin?error=invalid_signature`);
     }
 
     logger.info({ shopDomain, host }, 'Embedded app launch - HMAC verified');
@@ -350,12 +350,12 @@ export async function handleEmbeddedAppLaunch(req, res) {
 
     // Merchant exists, redirect to dashboard
     logger.info({ shopDomain, merchantId: merchant.id }, 'Merchant found, redirecting to dashboard');
-    const redirectUrl = `${process.env.FRONTEND_URL}/dashboard/${encodeURIComponent(shopDomain)}?host=${encodeURIComponent(host || '')}`;
+    const redirectUrl = `${config.frontendUrl}/dashboard/${encodeURIComponent(shopDomain)}?host=${encodeURIComponent(host || '')}`;
     return res.redirect(redirectUrl);
 
   } catch (err) {
     logger.error({ err }, 'Embedded app launch failed');
-    return res.redirect(`${process.env.FRONTEND_URL}/signin?error=launch_failed`);
+    return res.redirect(`${config.frontendUrl}/signin?error=launch_failed`);
   }
 }
 

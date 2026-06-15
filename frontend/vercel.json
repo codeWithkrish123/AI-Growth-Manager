@@ -6,6 +6,6 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "https://your-backend-url.com"
+    "VITE_API_URL": "https://ai-growth-backend-aokd.onrender.com/api"
   }
 }

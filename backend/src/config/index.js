@@ -23,8 +23,10 @@ export const config = {
   env:   process.env.NODE_ENV || 'development',
   isDev: process.env.NODE_ENV !== 'production',
 
+  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+
   postgres: {
-    uri: process.env.POSTGRES_URI || 'postgresql://postgres:Newdelhi2025@localhost:5432/ai_growth_manager',
+    uri: process.env.POSTGRES_URI || process.env.DATABASE_URL || 'postgresql://postgres:Newdelhi2025@localhost:5432/ai_growth_manager',
   },
 
   redis: {

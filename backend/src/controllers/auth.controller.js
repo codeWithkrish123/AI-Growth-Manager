@@ -1,4 +1,5 @@
 import { shopify } from '../config/shopify.js';
+import { config } from '../config/index.js';
 import { MerchantModel } from '../models/Merchant.model.js';
 import { logger } from '../utils/logger.js';
 
@@ -48,7 +49,7 @@ export async function authCallback(req, res) {
     logger.info({ shopDomain: session.shop }, 'Merchant installed / re-authenticated');
 
     // Redirect to your frontend dashboard
-    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/dashboard?shop=${session.shop}`);
+    return res.redirect(`${config.frontendUrl}/dashboard?shop=${session.shop}`);
 
   } catch (err) {
     logger.error({ err }, 'OAuth callback error');
