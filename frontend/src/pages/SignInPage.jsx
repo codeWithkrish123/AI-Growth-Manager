@@ -150,10 +150,12 @@ export default function SignInPage() {
                         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8">
                             <p className="text-sm font-medium text-slate-500">Connect your Shopify store</p>
                             <form onSubmit={(e) => { e.preventDefault(); handleShopifySignIn(); }} className="space-y-6">
-                                <div className="space-y-3 group border-b-2 border-slate-100 focus-within:border-indigo-600 pb-1">
+                                <div className="space-y-3 group relative">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Store Domain</label>
-                                    <input type="text" value={shopDomain} onChange={(e) => setShopDomain(e.target.value)} placeholder="your-store" className="w-full bg-transparent border-none outline-none text-slate-900 font-bold text-lg" disabled={shopifyLoading} />
-                                    <span className="absolute right-0 top-0 text-slate-400 text-sm">.myshopify.com</span>
+                                    <div className="relative">
+                                        <input type="text" value={shopDomain} onChange={(e) => setShopDomain(e.target.value)} placeholder="your-store" className="w-full h-[64px] border border-slate-200 rounded-2xl px-6 pr-32 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 text-slate-900 font-bold text-lg" disabled={shopifyLoading} />
+                                        <span className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">.myshopify.com</span>
+                                    </div>
                                 </div>
                                 <button type="submit" disabled={shopifyLoading || !shopDomain} className="w-full h-[64px] bg-[#95BF47] hover:bg-[#86ac40] text-white rounded-2xl flex items-center justify-center gap-3 disabled:opacity-50 font-black">
                                     {shopifyLoading ? (
