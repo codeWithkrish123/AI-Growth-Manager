@@ -18,7 +18,6 @@ export default function ProductsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
   const [formData, setFormData] = useState({ title: '', price: '', description: '', images: [] });
-  const [optimizingId, setOptimizingId] = useState(null);
   const [menuOpenId, setMenuOpenId] = useState(null);
 
   const toggleDark = () => {
@@ -47,7 +46,7 @@ export default function ProductsPage() {
       setModalError('Title and price are required');
       return;
     }
-    
+
     try {
       setIsSubmitting(true);
       // Send without images (base64 data URLs cause Shopify 422 error)
@@ -57,13 +56,32 @@ export default function ProductsPage() {
         description: formData.description,
         images: [] // Skip images for now - they must be valid URLs
       });
+
       if (res.data?.success) {
+        Swal.fire({
+          title: 'Product Created',
+          text: `"${formData.title}" has been successfully pushed to your Shopify store.`,
+          icon: 'success',
+          confirmButtonColor: '#6366f1',
+          background: isDark ? '#1e293b' : '#fff',
+          color: isDark ? '#fff' : '#1e293b'
+        });
+
         setShowAddModal(false);
         setFormData({ title: '', price: '', description: '', images: [] });
         fetchProducts();
       }
     } catch (e) {
-      setModalError(errMsg(e, 'Failed to create product'));
+      const errorMsg = errMsg(e, 'Failed to create product');
+      setModalError(errorMsg);
+
+      Swal.fire({
+        title: 'Creation Failed',
+        text: errorMsg,
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -83,33 +101,8 @@ export default function ProductsPage() {
     });
   };
 
-  const handleOptimize = async (product) => {
-    try {
-      setOptimizingId(product.id);
-      await dashboardAPI.optimizeProduct(shop, product.id);
-      
-      Swal.fire({
-        title: 'Optimization Complete',
-        text: `AI has enhanced the description and SEO for "${product.title}".`,
-        icon: 'success',
-        confirmButtonColor: '#6366f1',
-        background: isDark ? '#1e293b' : '#fff',
-        color: isDark ? '#fff' : '#1e293b'
-      });
-
-      // Refresh products to show updated data
-      fetchProducts();
-    } catch (e) {
-      Swal.fire({
-        title: 'Optimization Failed',
-        text: 'The AI engine could not optimize this product right now.',
-        icon: 'error',
-        background: isDark ? '#1e293b' : '#fff',
-        color: isDark ? '#fff' : '#1e293b'
-      });
-    } finally {
-      setOptimizingId(null);
-    }
+  const handleOptimize = (product) => {
+    navigate(`/ai-descriptions?productId=${product.id}&productName=${encodeURIComponent(product.title)}`);
   };
 
   const filtered = products.filter(p =>

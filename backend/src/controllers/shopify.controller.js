@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { success, error } from '../utils/response.js';
 import { logger } from '../utils/logger.js';
-import { MerchantModel } from '../models/index.js';
+import { MerchantModel, Merchant } from '../models/index.js';
 import { encrypt } from '../utils/encryption.js';
 import { config } from '../config/index.js';
 
@@ -20,14 +20,11 @@ export async function initiateShopifyAuth(req, res) {
     // Normalize shop domain
     const shopDomain = shop.replace('.myshopify.com', '').toLowerCase() + '.myshopify.com';
     
-    // Debug logging
-    logger.info({ shop, shopDomain, shopName: shopDomain.replace('.myshopify.com', ''), force }, 'Processing shop domain');
-    
     // Validate shop domain format - allow letters, numbers, and hyphens
     const shopName = shopDomain.replace('.myshopify.com', '');
     if (!shopName.match(/^[a-z0-9][a-z0-9-]*$/)) {
       logger.error({ shop, shopDomain, shopName }, 'Invalid shop domain format');
-      return error(res, `Invalid shop domain format: ${shopDomain}. Shop name must be lowercase letters, numbers, and hyphens only.`, 400);
+      return error(res, `Invalid shop domain. Please enter a valid Shopify store name.`, 400);
     }
 
     // Check if merchant already exists
@@ -41,10 +38,20 @@ export async function initiateShopifyAuth(req, res) {
       });
     }
 
-    // If force is true, delete existing merchant to allow re-authentication
+    // If force is true, mark as inactive to allow re-authentication
     if (existingMerchant && force) {
-      logger.info({ shopDomain }, 'Force re-auth: deleting existing merchant');
-      await MerchantModel.updateByShopDomain(shopDomain, { isActive: false });
+      logger.info({ shopDomain }, 'Force re-auth requested');
+      try {
+        await MerchantModel.findOneAndUpdate({ shopDomain }, { isActive: false });
+      } catch (updateErr) {
+        logger.warn({ shopDomain, err: updateErr.message }, 'Failed to mark merchant as inactive');
+      }
+    }
+
+    // Validate config is set
+    if (!config.shopify?.apiKey || !config.shopify?.appUrl) {
+      logger.error('Shopify config missing: apiKey or appUrl');
+      return error(res, 'Server configuration error. Please contact support.', 500);
     }
 
     // Generate nonce for security
@@ -52,14 +59,14 @@ export async function initiateShopifyAuth(req, res) {
     
     // Build Shopify OAuth URL
     const redirectUri = `${config.shopify.appUrl}/auth/shopify/callback`;
-    const scopes = config.shopify.scopes.split(',');
+    const scopes = config.shopify.scopes?.split(',') || [];
     const authUrl = `https://${shopDomain}/admin/oauth/authorize?` +
       `client_id=${config.shopify.apiKey}&` +
       `scope=${scopes.join(',')}&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `state=${nonce}`;
 
-    logger.info({ shopDomain, nonce }, 'Initiating Shopify OAuth');
+    logger.info({ shopDomain }, 'Initiating Shopify OAuth');
 
     return success(res, {
       authUrl,
@@ -68,8 +75,8 @@ export async function initiateShopifyAuth(req, res) {
     });
 
   } catch (err) {
-    logger.error({ err }, 'Shopify OAuth initiation failed');
-    return error(res, 'Failed to initiate OAuth', 500);
+    logger.error({ err, message: err.message }, 'Shopify OAuth initiation failed');
+    return error(res, 'Failed to initiate authentication. Please try again later.', 500);
   }
 }
 
@@ -82,75 +89,81 @@ export async function handleShopifyCallback(req, res) {
     const { code, hmac, shop, state } = req.query;
     
     if (!code || !hmac || !shop) {
-      return error(res, 'Missing required OAuth parameters', 400);
+      logger.warn({ code, hmac, shop }, 'Missing required OAuth parameters');
+      return res.redirect(`${config.frontendUrl}/signin?error=missing_params`);
     }
 
     const shopDomain = shop.replace('.myshopify.com', '').toLowerCase() + '.myshopify.com';
     
     // Verify HMAC signature
-    const hmacVerified = verifyHmac(req.query, config.shopify.apiSecret);
-    if (!hmacVerified) {
-      logger.error({ shopDomain }, 'HMAC verification failed');
-      return error(res, 'Invalid request signature', 400);
+    try {
+      const hmacVerified = verifyHmac(req.query, config.shopify.apiSecret);
+      if (!hmacVerified) {
+        logger.error({ shopDomain }, 'HMAC verification failed');
+        return res.redirect(`${config.frontendUrl}/signin?error=invalid_signature`);
+      }
+    } catch (hmacErr) {
+      logger.error({ shopDomain, err: hmacErr.message }, 'HMAC verification error');
+      return res.redirect(`${config.frontendUrl}/signin?error=verification_failed`);
     }
 
     logger.info({ shopDomain }, 'HMAC verified, exchanging code for access token');
 
     // Exchange authorization code for access token
-    const tokenResponse = await exchangeCodeForToken(shopDomain, code);
+    let tokenResponse;
+    try {
+      tokenResponse = await exchangeCodeForToken(shopDomain, code);
+    } catch (tokenErr) {
+      logger.error({ shopDomain, err: tokenErr.message }, 'Failed to exchange code for token');
+      return res.redirect(`${config.frontendUrl}/signin?error=token_exchange_failed`);
+    }
     
-    if (!tokenResponse.access_token) {
-      logger.error({ shopDomain, tokenResponse }, 'Failed to get access token');
-      return error(res, 'Failed to obtain access token', 500);
+    if (!tokenResponse?.access_token) {
+      logger.error({ shopDomain }, 'No access token received');
+      return res.redirect(`${config.frontendUrl}/signin?error=no_access_token`);
     }
 
     // Get shop information
-    const shopInfo = await getShopInfo(shopDomain, tokenResponse.access_token);
+    let shopInfo;
+    try {
+      shopInfo = await getShopInfo(shopDomain, tokenResponse.access_token);
+    } catch (shopErr) {
+      logger.error({ shopDomain, err: shopErr.message }, 'Failed to get shop info');
+      return res.redirect(`${config.frontendUrl}/signin?error=shop_info_failed`);
+    }
 
     // Create or update merchant
-    const merchant = await MerchantModel.create({
-      shopDomain,
-      accessToken: tokenResponse.access_token,
-      scope: tokenResponse.scope,
-      shopInfo: {
-        ...shopInfo,
-        connectedAt: new Date().toISOString(),
-        authProvider: 'shopify'
-      },
-      isActive: true,
-      planTier: 'free'
-    });
-
-    logger.info({ shopDomain, merchantId: merchant.id }, 'Shopify OAuth completed successfully');
-
-    // Register webhooks for real-time updates
     try {
-      await registerWebhooks(shopDomain, tokenResponse.access_token);
-      logger.info({ shopDomain }, 'Webhooks registered successfully');
-    } catch (webhookErr) {
-      logger.warn({ shopDomain, error: webhookErr.message }, 'Failed to register webhooks');
-      // Continue anyway - webhooks are not critical for basic functionality
+      const merchant = await Merchant.create({
+        shopDomain,
+        accessToken: tokenResponse.access_token,
+        scope: tokenResponse.scope,
+        shopInfo: {
+          ...shopInfo,
+          connectedAt: new Date().toISOString(),
+          authProvider: 'shopify'
+        },
+        isActive: true,
+        planTier: 'free'
+      });
+      logger.info({ shopDomain, merchantId: merchant.id }, 'Shopify OAuth completed successfully');
+
+      // Register webhooks asynchronously (don't block redirect)
+      registerWebhooks(shopDomain, tokenResponse.access_token).catch(err => {
+        logger.warn({ shopDomain, err: err.message }, 'Webhook registration failed (non-critical)');
+      });
+
+    } catch (createErr) {
+      logger.error({ shopDomain, err: createErr.message }, 'Failed to create/update merchant');
+      return res.redirect(`${config.frontendUrl}/signin?error=merchant_creation_failed`);
     }
 
-    // Trigger initial sync+analyze — await so data is ready when dashboard loads
-    try {
-      const { triggerSync } = await import('./index.js');
-      const fakeReq = { merchant, params: { shopDomain } };
-      const fakeRes = { json: () => {}, status: () => ({ json: () => {} }) };
-      await triggerSync(fakeReq, fakeRes);
-      logger.info({ shopDomain }, 'Initial sync completed before redirect');
-    } catch (e) {
-      logger.warn({ shopDomain, error: e.message }, 'Initial sync failed (non-critical)');
-    }
-
-    // Redirect to frontend with success using path parameter
+    // Redirect to frontend with success
     const redirectUrl = `${config.frontendUrl}/dashboard/${encodeURIComponent(shopDomain)}?success=true`;
     res.redirect(redirectUrl);
 
   } catch (err) {
-    logger.error({ err }, 'Shopify OAuth callback failed');
-    
-    // Redirect to frontend with error
+    logger.error({ err, message: err.message }, 'Shopify OAuth callback failed');
     const redirectUrl = `${config.frontendUrl}/signin?error=auth_failed`;
     res.redirect(redirectUrl);
   }

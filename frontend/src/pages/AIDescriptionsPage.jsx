@@ -18,12 +18,11 @@ export default function AIDescriptionsPage() {
   }
 
   const [previews,  setPreviews]  = useState([])
-  const [status,    setStatus]    = useState('idle')   // idle | loading | preview | applying | done | error
+  const [status,    setStatus]    = useState('idle')
   const [result,    setResult]    = useState(null)
   const [expanded,  setExpanded]  = useState(null)
   const [error,     setError]     = useState(null)
 
-  // Load preview on mount
   useEffect(() => {
     if (!shop) { navigate('/onboarding'); return }
     loadPreview()
@@ -111,7 +110,7 @@ export default function AIDescriptionsPage() {
                 <p className="text-sm font-bold" style={{ color: 'var(--c-text)' }}>
                   GPT-4 is writing your descriptions...
                 </p>
-                <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>This may take 15â€“30 seconds</p>
+                <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>This may take 15-30 seconds</p>
                 <div className="flex gap-1 mt-1">
                   {[0,1,2].map(i => (
                     <div key={i} className="w-2 h-2 rounded-full bg-indigo-400"
@@ -145,7 +144,7 @@ export default function AIDescriptionsPage() {
                 <div className="flex-1">
                   <p className="text-sm font-bold text-red-600 dark:text-red-400">{error}</p>
                   <button onClick={loadPreview} className="text-xs text-indigo-400 hover:text-indigo-300 mt-2 font-semibold">
-                    Try again â†’
+                    Try again →
                   </button>
                 </div>
               </motion.div>
@@ -179,7 +178,7 @@ export default function AIDescriptionsPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="section-title">
-                  Preview â€” {previews.length} products to update
+                  Preview — {previews.length} products to update
                 </p>
                 <span className="badge badge-amber">Preview only • not applied yet</span>
               </div>
