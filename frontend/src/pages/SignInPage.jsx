@@ -128,7 +128,7 @@ export default function SignInPage() {
                     {/* Google Auth */}
                     {authMethod === 'google' && (
                         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8">
-                            <p className="text-sm font-medium text-slate-600">Continue with your Google account</p>
+                            <p className="text-sm font-medium text-slate-500 text-center">Sign in with your Google account</p>
                             <button onClick={handleGoogleSignIn} disabled={googleLoading} className="w-full h-[64px] border border-slate-200 rounded-2xl flex items-center justify-center gap-4 hover:bg-slate-50 disabled:opacity-50">
                                 {googleLoading ? (
                                     <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin" />
@@ -148,7 +148,7 @@ export default function SignInPage() {
                     {/* Shopify Auth */}
                     {authMethod === 'shopify' && (
                         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8">
-                            <p className="text-sm font-medium text-slate-600">Enter your Shopify store domain</p>
+                            <p className="text-sm font-medium text-slate-500 text-center">Enter your Shopify store domain</p>
                             <form onSubmit={(e) => { e.preventDefault(); handleShopifySignIn(); }} className="space-y-6">
                                 <div className="space-y-3 group relative">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Store Domain</label>
