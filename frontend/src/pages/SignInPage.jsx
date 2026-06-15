@@ -7,18 +7,14 @@ import Swal from 'sweetalert2'
 
 export default function SignInPage() {
     const navigate = useNavigate()
-    const [email, setEmail] = useState('')
     const [shopDomain, setShopDomain] = useState('')
-    const [loading, setLoading] = useState(false)
     const [googleLoading, setGoogleLoading] = useState(false)
     const [shopifyLoading, setShopifyLoading] = useState(false)
     const [authMethod, setAuthMethod] = useState('google') // 'google' or 'shopify'
     const [isLoggedIn, setIsLoggedIn] = useState(false)
 
     useEffect(() => {
-        document.title = 'Sign In – AI Growth Manager | Start Your Free Trial'
-        
-        // Check if user is already logged in
+        document.title = 'Sign In – AI Growth Manager'
         if (localStorage.getItem('token')) {
             setIsLoggedIn(true)
         }
@@ -33,50 +29,39 @@ export default function SignInPage() {
         }
     }
 
-    // Handle Google Sign-In
     const handleGoogleSignIn = async () => {
         setGoogleLoading(true)
         try {
             const response = await fetch(`${BACKEND_URL}/google/auth/google`);
             if (!response.ok) throw new Error(`Server returned ${response.status}`);
-            
             const data = await response.json();
-            
             if (data.success && data.data.authUrl) {
                 window.location.href = data.data.authUrl;
             } else {
-                Swal.fire({ title: 'Authentication Error', text: 'Failed to initiate Google sign-in.', icon: 'error', confirmButtonColor: '#6366f1' });
+                Swal.fire({ title: 'Authentication Error', icon: 'error', confirmButtonColor: '#6366f1' });
             }
         } catch (error) {
-            Swal.fire({ title: 'Connection Failed', text: 'Could not connect to the backend.', icon: 'error', confirmButtonColor: '#6366f1' });
+            Swal.fire({ title: 'Connection Failed', icon: 'error', confirmButtonColor: '#6366f1' });
         } finally {
             setGoogleLoading(false)
         }
     }
 
-    // Handle Shopify Sign-In
     const handleShopifySignIn = async () => {
         if (!shopDomain) {
             Swal.fire({ text: 'Please enter your Shopify store domain', icon: 'warning' });
             return;
         }
-
         setShopifyLoading(true)
         try {
-            const normalizedShop = shopDomain.includes('.myshopify.com')
-                ? shopDomain
-                : `${shopDomain}.myshopify.com`;
-
+            const normalizedShop = shopDomain.includes('.myshopify.com') ? shopDomain : `${shopDomain}.myshopify.com`;
             const response = await fetch(`${BACKEND_URL}/auth/shopify/initiate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ shop: normalizedShop }),
             });
-
             if (!response.ok) throw new Error(`Server returned ${response.status}`);
-
             const data = await response.json();
-
             if (data.success && data.data.authUrl) {
                 window.location.href = data.data.authUrl;
             } else if (data.success && data.data.redirectTo) {
@@ -85,24 +70,9 @@ export default function SignInPage() {
                 Swal.fire({ title: 'Connection Error', text: data.error || 'Failed to connect store.', icon: 'error', confirmButtonColor: '#6366f1' });
             }
         } catch (error) {
-            Swal.fire({ title: 'Connection Failed', text: 'Could not connect to Shopify.', icon: 'error', confirmButtonColor: '#6366f1' });
+            Swal.fire({ title: 'Connection Failed', icon: 'error', confirmButtonColor: '#6366f1' });
         } finally {
             setShopifyLoading(false)
-        }
-    }
-
-    const handleSubmit = async (e) => {
-        e.preventDefault()
-        if (!email) return
-        setLoading(true)
-        try {
-            const shop = email.includes('.myshopify.com') ? email : `${email}.myshopify.com`
-            const response = await authAPI.initiateAuth(shop)
-            window.location.href = response.data.redirect_url || response.request.responseURL
-        } catch (error) {
-            navigate('/onboarding')
-        } finally {
-            setLoading(false)
         }
     }
 
@@ -110,16 +80,6 @@ export default function SignInPage() {
         <div className="min-h-screen flex flex-col md:flex-row bg-white overflow-hidden">
             {/* Left Panel */}
             <div className="md:w-[45%] bg-indigo-600 relative flex flex-col justify-center p-10 lg:p-20 overflow-hidden">
-                <div className="absolute inset-0 opacity-10 pointer-events-none">
-                    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                        <filter id="noise">
-                            <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" stitchTiles="stitch" />
-                        </filter>
-                        <rect width="100%" height="100%" filter="url(#noise)" opacity="0.5" />
-                        <path d="M0,100 C150,200 350,0 500,100 S850,200 1000,100" stroke="white" strokeWidth="2" fill="none" opacity="0.3" />
-                        <path d="M0,200 C150,300 350,100 500,200 S850,300 1000,200" stroke="white" strokeWidth="2" fill="none" opacity="0.2" />
-                    </svg>
-                </div>
                 <div className="relative z-10 max-w-lg">
                     <h1 className="text-5xl lg:text-7xl font-black text-white leading-tight tracking-tighter">
                         Simplified <br />
@@ -138,8 +98,8 @@ export default function SignInPage() {
                     <X className="w-5 h-5" />
                 </button>
 
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-[440px] px-4">
-                    <div className="mb-10 text-center">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-[440px] px-4 text-center">
+                    <div className="mb-10">
                         <h2 className="text-4xl font-black text-slate-900 tracking-tight leading-tight mb-2">
                             Welcome to <br /> AI Growth Manager
                         </h2>
