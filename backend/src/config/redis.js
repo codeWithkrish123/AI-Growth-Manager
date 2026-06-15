@@ -12,18 +12,22 @@ if (isRedisEnabled) {
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
     lazyConnect: true,
+    retryStrategy: () => null, // disable retries
+    maxReconnectTime: 0,
   });
   redisConnection.on('connect', () => logger.info('Redis connected'));
   redisConnection.on('ready',   () => logger.info('Redis ready'));
-  redisConnection.on('error',   (err) => logger.error({ err }, 'Redis connection error'));
-  redisConnection.on('close',   () => logger.warn('Redis connection closed'));
-  redisConnection.on('reconnecting', () => logger.debug('Redis reconnecting...'));
+  redisConnection.on('error',   () => {}); // silence errors
+  redisConnection.on('close',   () => {});
+  redisConnection.on('reconnecting', () => {});
 
   redisCache = new Redis(REDIS_URL, {
     lazyConnect: true,
     keyPrefix: 'aigm:',
+    retryStrategy: () => null,
+    maxReconnectTime: 0,
   });
-  redisCache.on('error', (err) => logger.debug('Redis cache error', { err }));
+  redisCache.on('error', () => {}); // silence errors
 }
 
 export { redisConnection, redisCache, isRedisEnabled };
