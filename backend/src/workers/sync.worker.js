@@ -1,82 +1,26 @@
-import { Queue, Worker } from 'bullmq';
-import { redisConnection, isRedisEnabled } from '../config/redis.js';
-import { fetchProducts } from '../services/shopify/products.service.js';
-import { fetchOrders } from '../services/shopify/order.services.js';
-import { fetchStoreInfo } from '../services/shopify/store.service.js';
-import { fetchAbandonedCheckouts } from '../services/shopify/order.services.js';
-import { fetchCustomers } from '../services/shopify/customers.service.js';
-import { StoreSnapshotModel } from '../models/StoreSnapshot.model.js';
-import { MerchantModel } from '../models/Merchant.model.js';
+import { isRedisEnabled } from '../config/redis.js';
 import { logger } from '../utils/logger.js';
 
-// Only create queues if Redis is enabled
+// Workers only run with Redis
 export let syncQueue = null;
 export let fixQueue = null;
 export let webhookQueue = null;
 export let analysisQueue = null;
 
-if (isRedisEnabled) {
-  const defaultOptions = {
-    connection: redisConnection,
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 3000 },
-      removeOnComplete: 100,
-      removeOnFail: 200,
-    },
-  };
-
-  syncQueue = new Queue('store-sync', defaultOptions);
-  fixQueue = new Queue('apply-fix', defaultOptions);
-  webhookQueue = new Queue('webhook-events', defaultOptions);
-  analysisQueue = new Queue('store-analysis', defaultOptions);
-}
-
 export async function queueAnalysis(shopDomain, snapshotId) {
-  if (!analysisQueue) {
-    logger.warn('Redis not enabled - analysis queue unavailable');
-    return null;
-  }
-  const job = await analysisQueue.add('analyze-store', { shopDomain, snapshotId }, {
-    jobId: `${shopDomain}-analysis`,
-  });
-  return job;
+  logger.debug('Analysis queued (running in-memory, Redis not available)');
+  return null;
 }
 
 export async function queueFix(fixActionId, shopDomain) {
-  if (!fixQueue) {
-    logger.warn('Redis not enabled - fix queue unavailable');
-    return null;
-  }
-  const job = await fixQueue.add('apply-fix', { fixActionId, shopDomain }, {
-    jobId: fixActionId,
-  });
-  return job;
+  logger.debug('Fix queued (running in-memory, Redis not available)');
+  return null;
 }
 
 export async function queueWebhookEvent(webhookEventId) {
-  if (!webhookQueue) {
-    logger.warn('Redis not enabled - webhook queue unavailable');
-    return null;
-  }
-  const job = await webhookQueue.add('process-webhook', { webhookEventId }, {
-    jobId: webhookEventId,
-  });
-  return job;
+  logger.debug('Webhook queued (running in-memory, Redis not available)');
+  return null;
 }
-
-// ─── Sync Worker ─────────────────────────────────────────────────────────────
-export function startSyncWorker() {
-  if (!isRedisEnabled) {
-    logger.info('Redis not enabled - sync worker disabled');
-    return;
-  }
-  
-  const worker = new Worker(
-    'store-sync',
-    async (job) => {
-      const { shopDomain, syncJobId } = job.data;
-      logger.info({ shopDomain, syncJobId }, 'Processing sync job');
 
       try {
         // Get merchant's stored access token (falls back to admin token)

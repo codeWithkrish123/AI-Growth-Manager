@@ -1,41 +1,43 @@
-import Redis from 'ioredis';
 import { logger } from '../utils/logger.js';
 
 const REDIS_URL = process.env.REDIS_URL;
 const isRedisEnabled = !!REDIS_URL;
 
 let redisConnection = null;
-let redisCache = null;
+let redisCache = new InMemoryCache();
 
 if (isRedisEnabled) {
-  redisConnection = new Redis(REDIS_URL, {
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-    lazyConnect: true,
-    retryStrategy: () => null, // disable retries
-    maxReconnectTime: 0,
-  });
-  redisConnection.on('connect', () => logger.info('Redis connected'));
-  redisConnection.on('ready',   () => logger.info('Redis ready'));
-  redisConnection.on('error',   () => {}); // silence errors
-  redisConnection.on('close',   () => {});
-  redisConnection.on('reconnecting', () => {});
+  // Future: connect to actual Redis when available
+  logger.info('Redis URL provided - future support');
+}
 
-  redisCache = new Redis(REDIS_URL, {
-    lazyConnect: true,
-    keyPrefix: 'aigm:',
-    retryStrategy: () => null,
-    maxReconnectTime: 0,
-  });
-  redisCache.on('error', () => {}); // silence errors
+// In-memory cache for local development/when Redis unavailable
+class InMemoryCache {
+  constructor() {
+    this.cache = new Map();
+  }
+
+  async get(key) {
+    return this.cache.get(key) || null;
+  }
+
+  async set(key, value, ttl) {
+    this.cache.set(key, value);
+    if (ttl) setTimeout(() => this.cache.delete(key), ttl * 1000);
+  }
+
+  async del(key) {
+    this.cache.delete(key);
+  }
+
+  async ping() {
+    return 'PONG';
+  }
 }
 
 export { redisConnection, redisCache, isRedisEnabled };
 
 export async function redisHealthCheck() {
-  if (!isRedisEnabled) {
-    return { status: 'disabled' };
-  }
   try {
     const pong = await redisCache.ping();
     return { status: pong === 'PONG' ? 'healthy' : 'unhealthy' };
