@@ -18,7 +18,7 @@ export default function StoreAccessPage() {
     const handleAuthorize = async () => {
         setIsVerifying(true)
         try {
-            const response = await fetch(`${BACKEND_URL}/auth/shopify/initiate`, {
+            const response = await fetch(`${BACKEND_URL}/api/auth/shopify/initiate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ shop })
