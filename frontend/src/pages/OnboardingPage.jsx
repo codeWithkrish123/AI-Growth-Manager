@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ShoppingBag, ShieldCheck, Lock, ArrowRight, Zap, Globe, Sparkles, CheckCircle2, BarChart3, Users, Package, Search } from 'lucide-react'
+import { BACKEND_URL } from '../services'
+import Swal from 'sweetalert2'
 
 const ANALYSIS_STEPS = [
     { id: 'connect', label: 'Connecting to Shopify API...', icon: Globe },
@@ -75,12 +77,17 @@ export default function OnboardingPage() {
         }
 
         try {
-            const response = await fetch('https://ai-growth-backend-aokd.onrender.com/auth/shopify/initiate', {
+            const response = await fetch(`${BACKEND_URL}/auth/shopify/initiate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ shop: formattedStore })
             })
             
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Server returned ${response.status}`);
+            }
+
             const data = await response.json()
             
             // Wait for animation to finish or at least progress significantly
@@ -98,13 +105,23 @@ export default function OnboardingPage() {
                 clearInterval(animationInterval);
                 setIsConnecting(false);
                 const errorMessage = data.error?.message || data.error || 'Failed to connect store. Please check your store domain.'
-                alert(errorMessage)
+                Swal.fire({
+                    title: 'Connection Error',
+                    text: errorMessage,
+                    icon: 'error',
+                    confirmButtonColor: '#6366f1'
+                });
             }
 
         } catch (error) {
             clearInterval(animationInterval);
             setIsConnecting(false);
-            alert('Failed to connect store. Please try again.')
+            Swal.fire({
+                title: 'Connection Failed',
+                text: 'Could not connect to the store. Please check your network and try again.',
+                icon: 'error',
+                confirmButtonColor: '#6366f1'
+            });
         }
     }
 

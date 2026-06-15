@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Mail, Send, Target, Users, BarChart3, Inbox, Plus, Menu, RefreshCw, X, Sparkles, Wand2, Edit3, Eye, AlertCircle } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import { dashboardAPI, errMsg } from '../services/api'
+import Swal from 'sweetalert2'
 
 export default function EmailsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -46,41 +47,89 @@ export default function EmailsPage() {
   }
 
   const handleGenerate = async () => {
-    if (!aiPrompt.trim()) return showToast('Enter a prompt first', 'error')
+    if (!aiPrompt.trim()) return Swal.fire({ text: 'Enter a prompt first', icon: 'warning', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#1e293b' })
     try {
       setGenerating(true)
       const res = await dashboardAPI.aiPromptComposeEmail(shop, { prompt: aiPrompt })
       const data = res.data?.data || res.data
       setAiResult({ subject: data.subject, body: data.body })
       setForm(p => ({ ...p, subject: data.subject, body: data.body, name: p.name || aiPrompt.slice(0, 40) }))
-      showToast('Email generated! Review and edit below.')
-    } catch (e) { showToast(errMsg(e, 'Generation failed'), 'error') }
+      Swal.fire({
+        title: 'Email Generated!',
+        text: 'Review and edit the copy below.',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false,
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+    } catch (e) { Swal.fire({ title: 'Generation Failed', text: errMsg(e), icon: 'error', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#1e293b' }) }
     finally { setGenerating(false) }
   }
 
   const handleCreate = async () => {
-    if (!form.name) return showToast('Campaign name is required', 'error')
+    if (!form.name) return Swal.fire({ text: 'Campaign name is required', icon: 'warning', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#1e293b' })
     const subject = form.subject || aiResult?.subject
-    if (!subject) return showToast('Subject is required', 'error')
+    if (!subject) return Swal.fire({ text: 'Subject is required', icon: 'warning', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#1e293b' })
     try {
       setCreating(true)
       await dashboardAPI.createEmailCampaign(shop, { name: form.name, type: form.type, subject, body: form.body || aiResult?.body })
-      showToast('Campaign created!')
+      Swal.fire({
+        title: 'Campaign Created!',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false,
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
       closeModal(); fetchAll()
-    } catch (e) { showToast(errMsg(e, 'Create failed'), 'error') }
+    } catch (e) { Swal.fire({ title: 'Create Failed', text: errMsg(e), icon: 'error', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#1e293b' }) }
     finally { setCreating(false) }
   }
 
-  const handleSendConfirmed = async () => {
-    if (!confirmSend) return
+  const handleSendRequest = async (id) => {
+    const result = await Swal.fire({
+      title: 'Send to all customers?',
+      text: 'This will email all customers in your Shopify store. This action cannot be undone.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#6366f1',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Yes, send now',
+      background: isDark ? '#1e293b' : '#fff',
+      color: isDark ? '#fff' : '#1e293b'
+    });
+
+    if (result.isConfirmed) {
+      handleSendConfirmed(id);
+    }
+  }
+
+  const handleSendConfirmed = async (id) => {
     try {
       setSending(true)
-      const res = await dashboardAPI.sendEmailCampaign(shop, confirmSend)
+      const res = await dashboardAPI.sendEmailCampaign(shop, id)
       const data = res.data?.data || res.data
-      showToast(`✅ Sent to ${data?.sent ?? '?'} customers!`)
-      setConfirmSend(null); fetchAll()
-    } catch (e) { showToast('Send failed: ' + errMsg(e), 'error') }
-    finally { setSending(false) }
+      Swal.fire({
+        title: 'Campaign Sent!',
+        text: `Success! Email delivered to ${data?.sent ?? '?'} customers.`,
+        icon: 'success',
+        confirmButtonColor: '#6366f1',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+      fetchAll()
+    } catch (e) {
+      Swal.fire({
+        title: 'Send Failed',
+        text: errMsg(e),
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+    } finally {
+      setSending(false)
+    }
   }
 
   const closeModal = () => {
@@ -100,12 +149,6 @@ export default function EmailsPage() {
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--c-bg)' }}>
       <Sidebar active="emails" shop={shop} onDarkModeToggle={toggleDark} isDark={isDark}
         mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
-
-      {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-lg text-white text-sm font-semibold shadow-xl ${toast.type==='error'?'bg-red-500':'bg-emerald-500'}`}>
-          {toast.msg}
-        </div>
-      )}
 
       <main className="flex-1 lg:ml-[var(--c-sidebar-w)] overflow-y-auto scrollbar-hide">
 
@@ -277,31 +320,11 @@ export default function EmailsPage() {
             </div>
             {(previewCamp.status==='draft'||previewCamp.status==='scheduled') && (
               <div className="px-6 py-4 border-t" style={{ borderColor: 'var(--c-border)' }}>
-                <button onClick={() => { setPreviewCamp(null); setConfirmSend(previewCamp.id) }} className="btn-primary w-full justify-center">
+                <button onClick={() => { setPreviewCamp(null); handleSendRequest(previewCamp.id) }} className="btn-primary w-full justify-center">
                   <Send className="w-4 h-4" /> Send This Campaign
                 </button>
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Send Confirmation ── */}
-      {confirmSend && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => !sending && setConfirmSend(null)} />
-          <div className="relative rounded-xl w-full max-w-sm shadow-2xl p-8 text-center" style={{ background: 'var(--c-surface)' }}>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ background: 'var(--c-primary-light)' }}>
-              <Send className="w-5 h-5" style={{ color: 'var(--c-primary)' }} />
-            </div>
-            <p className="text-base font-bold mb-2" style={{ color: 'var(--c-text)' }}>Send to all customers?</p>
-            <p className="text-xs mb-6" style={{ color: 'var(--c-text-muted)' }}>This will email all customers in your Shopify store via Resend. Cannot be undone.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmSend(null)} disabled={sending} className="btn-ghost flex-1 justify-center">Cancel</button>
-              <button onClick={handleSendConfirmed} disabled={sending} className="btn-primary flex-1 justify-center">
-                {sending ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Sending…</> : <><Send className="w-3.5 h-3.5" /> Send</>}
-              </button>
-            </div>
           </div>
         </div>
       )}

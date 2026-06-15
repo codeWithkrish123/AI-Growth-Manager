@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { RefreshCw, Menu, Sparkles, TrendingUp, Bell, Search, Calendar } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import { dashboardAPI } from '../services/api'
+import Swal from 'sweetalert2'
 
 // Sparkline SVG
 function Sparkline({ color = '#22c55e', up = true }) {
@@ -165,19 +166,56 @@ export default function DashboardPage() {
     try {
       setSyncing(true)
       await dashboardAPI.triggerSync(shop)
-      showToast('Sync started! Refreshing in 3s...')
+      
+      Swal.fire({
+        title: 'Sync Started',
+        text: 'Fetching latest data from Shopify. Refreshing dashboard...',
+        icon: 'info',
+        timer: 3000,
+        showConfirmButton: false,
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+
       setTimeout(() => { fetchAll(); setSyncing(false) }, 3000)
-    } catch { showToast('Sync failed', 'error'); setSyncing(false) }
+    } catch (err) {
+      Swal.fire({
+        title: 'Sync Failed',
+        text: 'Could not connect to Shopify. Please check your connection.',
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+      setSyncing(false)
+    }
   }
 
   const handleAnalyze = async () => {
     try {
       setAnalyzing(true)
       await dashboardAPI.triggerAnalysis(shop)
-      showToast('Analysis complete!')
+      
+      Swal.fire({
+        title: 'Analysis Complete',
+        text: 'AI has finished scanning your store for growth opportunities.',
+        icon: 'success',
+        confirmButtonColor: '#6366f1',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+      
       await fetchAll()
-    } catch { showToast('Analysis failed', 'error') }
-    finally { setAnalyzing(false) }
+    } catch (err) {
+      Swal.fire({
+        title: 'Analysis Failed',
+        text: 'The AI engine encountered an error. Please try again later.',
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+    } finally {
+      setAnalyzing(false)
+    }
   }
 
   const metrics    = dashData?.snapshot?.metrics || {}

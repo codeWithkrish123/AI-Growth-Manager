@@ -4,6 +4,7 @@ import { ShoppingBag, Search, Filter, MoreVertical, Plus, RefreshCw, FileText, T
 import Sidebar from '../components/Sidebar'
 import { dashboardAPI, errMsg } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 export default function ProductsPage() {
   const navigate = useNavigate();
@@ -86,11 +87,26 @@ export default function ProductsPage() {
     try {
       setOptimizingId(product.id);
       await dashboardAPI.optimizeProduct(shop, product.id);
-      console.log('Product optimized:', product.id);
+      
+      Swal.fire({
+        title: 'Optimization Complete',
+        text: `AI has enhanced the description and SEO for "${product.title}".`,
+        icon: 'success',
+        confirmButtonColor: '#6366f1',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      });
+
       // Refresh products to show updated data
       fetchProducts();
     } catch (e) {
-      console.error('Optimization failed:', e);
+      Swal.fire({
+        title: 'Optimization Failed',
+        text: 'The AI engine could not optimize this product right now.',
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      });
     } finally {
       setOptimizingId(null);
     }

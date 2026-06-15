@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import { dashboardAPI } from '../services/api'
+import Swal from 'sweetalert2'
 
 export default function SEOPage() {
   const navigate = useNavigate()
@@ -75,10 +76,25 @@ export default function SEOPage() {
     try {
       setAuditing(true)
       await dashboardAPI.runSeoAudit(shop)
-      showToast('SEO Audit completed!')
+      
+      Swal.fire({
+        title: 'SEO Audit Complete',
+        text: 'Your store has been scanned for search engine optimization opportunities.',
+        icon: 'success',
+        confirmButtonColor: '#10b981',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+
       fetchAllData()
     } catch (e) {
-      showToast('Audit failed: ' + e.message, 'error')
+      Swal.fire({
+        title: 'Audit Failed',
+        text: 'The SEO engine encountered an error: ' + e.message,
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
     } finally {
       setAuditing(false)
     }
@@ -88,10 +104,26 @@ export default function SEOPage() {
     try {
       setFixing(id)
       await dashboardAPI.fixSeoIssue(shop, id)
-      showToast('Issue fixed!')
+      
+      Swal.fire({
+        title: 'SEO Fix Applied',
+        text: 'The selected issue has been resolved automatically.',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false,
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+
       fetchAllData()
     } catch (e) {
-      showToast('Fix failed', 'error')
+      Swal.fire({
+        title: 'Fix Failed',
+        text: 'Could not apply the automatic fix at this time.',
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
     } finally {
       setFixing(null)
     }

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import { dashboardAPI } from '../services/api'
+import Swal from 'sweetalert2'
 
 export default function AdsPage() {
   const navigate = useNavigate()
@@ -89,7 +90,7 @@ export default function AdsPage() {
   const [creating,      setCreating]      = useState(false)
 
   const handleCreateCampaign = async () => {
-    if (!newCampaign.name) return showToast('Campaign name is required', 'error')
+    if (!newCampaign.name) return Swal.fire({ text: 'Campaign name is required', icon: 'warning', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#1e293b' })
     try {
       setCreating(true)
       await dashboardAPI.createAdsCampaign(shop, {
@@ -97,12 +98,27 @@ export default function AdsPage() {
         objective: newCampaign.objective,
         dailyBudget: newCampaign.dailyBudget ? parseFloat(newCampaign.dailyBudget) : null,
       })
-      showToast('Campaign created!')
+      
+      Swal.fire({
+        title: 'Campaign Created',
+        text: `"${newCampaign.name}" has been drafted and pushed to your ad account.`,
+        icon: 'success',
+        confirmButtonColor: '#6366f1',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+
       setIsCreateOpen(false)
       setNewCampaign({ name: '', objective: 'conversions', dailyBudget: '' })
       fetchAllData()
     } catch (e) {
-      showToast('Failed to create: ' + e.message, 'error')
+      Swal.fire({
+        title: 'Creation Failed',
+        text: 'Could not create the campaign: ' + e.message,
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
     } finally {
       setCreating(false)
     }
@@ -135,7 +151,13 @@ export default function AdsPage() {
       setCreativeData(creativeRes.data?.data || creativeRes.data);
       setIsCreativeModalOpen(true);
     } catch (e) {
-      showToast('Generation failed: ' + e.message, 'error');
+      Swal.fire({
+        title: 'Generation Failed',
+        text: 'The AI engine could not generate copy: ' + e.message,
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
     } finally {
       setLoading(false);
     }
@@ -145,7 +167,7 @@ export default function AdsPage() {
     try {
       setConnecting(connectPlatform);
       if (!connectData.accountId || !connectData.accessToken) {
-        showToast('Account ID and Token are required', 'error');
+        Swal.fire({ text: 'Account ID and Token are required', icon: 'warning', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#1e293b' })
         return;
       }
       await dashboardAPI.connectAdAccount(shop, connectPlatform, {
@@ -153,13 +175,28 @@ export default function AdsPage() {
         accountName: connectData.accountName || `${connectPlatform === 'meta' ? 'Meta' : 'Google'} Ads Store`,
         accessToken: connectData.accessToken
       });
-      showToast(`${connectPlatform === 'meta' ? 'Meta' : 'Google'} Ads account connected!`);
+      
+      Swal.fire({
+        title: 'Account Connected',
+        text: `Your ${connectPlatform === 'meta' ? 'Meta' : 'Google'} Ads account is now synced.`,
+        icon: 'success',
+        confirmButtonColor: '#6366f1',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+
       setIsConnectModalOpen(false);
       setConnectData({ accountId: '', accountName: '', accessToken: '' });
       // Force immediate re-fetch
       await fetchAllData();
     } catch (e) { 
-      showToast('Connect failed: ' + e.message, 'error');
+      Swal.fire({
+        title: 'Connection Failed',
+        text: e.message,
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
     } finally { 
       setConnecting(null); 
     }
@@ -171,14 +208,43 @@ export default function AdsPage() {
   };
 
   const handleDisconnect = async (id, platform) => {
-    if (!window.confirm(`Disconnect ${platform} account?`)) return;
+    const result = await Swal.fire({
+      title: 'Disconnect Account?',
+      text: `Are you sure you want to disconnect your ${platform} Ads account?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Yes, disconnect',
+      background: isDark ? '#1e293b' : '#fff',
+      color: isDark ? '#fff' : '#1e293b'
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
       setDisconnecting(id);
       await dashboardAPI.disconnectAdAccount(shop, id);
-      showToast(`${platform} account disconnected`);
+      
+      Swal.fire({
+        title: 'Account Disconnected',
+        text: 'The ad account has been removed from your manager.',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false,
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+
       fetchAllData();
     } catch (e) { 
-      showToast('Disconnect failed: ' + e.message, 'error');
+      Swal.fire({
+        title: 'Disconnect Failed',
+        text: e.message,
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
     } finally { 
       setDisconnecting(null); 
     }
@@ -189,14 +255,14 @@ export default function AdsPage() {
       setPausing(campaign.id)
       if (campaign.status === 'active') {
         await dashboardAPI.pauseAdsCampaign(shop, campaign.id)
-        showToast('Campaign paused')
+        Swal.fire({ title: 'Campaign Paused', icon: 'success', timer: 1500, showConfirmButton: false, background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#1e293b' })
       } else {
         await dashboardAPI.resumeAdsCampaign(shop, campaign.id)
-        showToast('Campaign resumed')
+        Swal.fire({ title: 'Campaign Resumed', icon: 'success', timer: 1500, showConfirmButton: false, background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#1e293b' })
       }
       fetchAllData()
     } catch (e) { 
-      showToast('Action failed: ' + e.message, 'error') 
+      Swal.fire({ title: 'Action Failed', text: e.message, icon: 'error', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#1e293b' })
     } finally { 
       setPausing(null) 
     }
@@ -205,10 +271,10 @@ export default function AdsPage() {
   const handleApplySuggestion = async (id) => {
     try {
       await dashboardAPI.applyAdsSuggestion(shop, id)
-      showToast('Suggestion applied!')
+      Swal.fire({ title: 'Fix Applied', text: 'AI suggestion has been implemented.', icon: 'success', timer: 2000, showConfirmButton: false, background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#1e293b' })
       fetchAllData()
     } catch (e) { 
-      showToast('Failed to apply: ' + e.message, 'error') 
+      Swal.fire({ title: 'Failed to Apply', text: e.message, icon: 'error', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#1e293b' })
     }
   }
 
@@ -216,10 +282,17 @@ export default function AdsPage() {
     try {
       setLoading(true)
       await dashboardAPI.aiBudgetOptimize(shop)
-      showToast('AI budget optimization completed!')
+      Swal.fire({
+        title: 'Budget Optimized',
+        text: 'AI has redistributed your budget for maximum ROAS.',
+        icon: 'success',
+        confirmButtonColor: '#6366f1',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
       fetchAllData()
     } catch (e) {
-      showToast('Optimization failed', 'error')
+      Swal.fire({ title: 'Optimization Failed', icon: 'error', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#1e293b' })
     } finally {
       setLoading(false)
     }

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Mail, X } from 'lucide-react'
-import { authAPI } from '../services'
+import { authAPI, BACKEND_URL } from '../services'
+import Swal from 'sweetalert2'
 
 export default function SignInPage() {
     const navigate = useNavigate()
@@ -23,7 +24,9 @@ export default function SignInPage() {
         setGoogleLoading(true)
         try {
             // Get Google OAuth URL from backend
-            const response = await fetch('http://localhost:3001/google/auth/google');
+            const response = await fetch(`${BACKEND_URL}/google/auth/google`);
+            if (!response.ok) throw new Error(`Server returned ${response.status}`);
+            
             const data = await response.json();
             
             if (data.success && data.data.authUrl) {
@@ -31,9 +34,21 @@ export default function SignInPage() {
                 window.location.href = data.data.authUrl;
             } else {
                 console.error('Failed to get Google auth URL');
+                Swal.fire({
+                    title: 'Authentication Error',
+                    text: 'Failed to initiate Google sign-in. Please try again.',
+                    icon: 'error',
+                    confirmButtonColor: '#6366f1'
+                });
             }
         } catch (error) {
             console.error('Google sign-in error:', error);
+            Swal.fire({
+                title: 'Connection Failed',
+                text: 'Could not connect to the backend. Please check your network and try again.',
+                icon: 'error',
+                confirmButtonColor: '#6366f1'
+            });
         } finally {
             setGoogleLoading(false)
         }
@@ -54,13 +69,15 @@ export default function SignInPage() {
                 : `${shopDomain}.myshopify.com`;
 
             // Initiate Shopify OAuth using the correct endpoint
-            const response = await fetch('http://localhost:3001/auth/shopify/initiate', {
+            const response = await fetch(`${BACKEND_URL}/auth/shopify/initiate`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ shop: normalizedShop }),
             });
+
+            if (!response.ok) throw new Error(`Server returned ${response.status}`);
 
             const data = await response.json();
 
@@ -72,11 +89,21 @@ export default function SignInPage() {
                 navigate(data.data.redirectTo);
             } else {
                 console.error('Failed to get Shopify auth URL:', data);
-                alert(data.error || 'Failed to connect store. Please check your store domain.');
+                Swal.fire({
+                    title: 'Connection Error',
+                    text: data.error || 'Failed to connect store. Please check your store domain.',
+                    icon: 'error',
+                    confirmButtonColor: '#6366f1'
+                });
             }
         } catch (error) {
             console.error('Shopify sign-in error:', error);
-            alert('Failed to connect store. Please try again.');
+            Swal.fire({
+                title: 'Connection Failed',
+                text: 'Could not connect to Shopify. Please try again later.',
+                icon: 'error',
+                confirmButtonColor: '#6366f1'
+            });
         } finally {
             setShopifyLoading(false)
         }
