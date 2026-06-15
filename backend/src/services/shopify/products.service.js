@@ -110,7 +110,7 @@ export async function createProduct(shopDomain, accessToken, productData) {
 
     // Clear cache after creating product
     const cacheKey = shopifyCache.key.products(shopDomain);
-    shopifyCache.delete(cacheKey);
+    shopifyCache.del(cacheKey);
 
     return response.body.product;
   } catch (err) {
