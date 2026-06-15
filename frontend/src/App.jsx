@@ -22,6 +22,7 @@ const SEOPage            = lazy(() => import('./pages/SEOPage'))
 
 const OnboardingStepsPage = lazy(() => import('./pages/OnboardingStepsPage'))
 const StoreAccessPage      = lazy(() => import('./pages/StoreAccessPage'))
+const StoreConnectedPage   = lazy(() => import('./pages/StoreConnectedPage'))
 
 // ── Loading fallback ──────────────────────────────────────────────────────────
 function PageLoader() {
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="/seo"              element={<SEOPage />} />
           <Route path="/onboarding-steps" element={<OnboardingStepsPage />} />
           <Route path="/store-access"     element={<StoreAccessPage />} />
+          <Route path="/store-connected"  element={<StoreConnectedPage />} />
 
           <Route path="*"                  element={<Navigate to="/" replace />} />
         </Routes>
