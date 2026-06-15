@@ -1,12 +1,19 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CheckCircle2, ShieldCheck, Zap, RefreshCw, X } from 'lucide-react'
+import { ShieldCheck, RefreshCw, ArrowLeft } from 'lucide-react'
 import { BACKEND_URL } from '../services'
 import Swal from 'sweetalert2'
 
 export default function StoreAccessPage() {
+    const navigate = useNavigate()
     const shop = localStorage.getItem('currentShop')
     const [isVerifying, setIsVerifying] = useState(false)
+
+    if (!shop) {
+        navigate('/onboarding')
+        return null
+    }
 
     const handleAuthorize = async () => {
         setIsVerifying(true)
@@ -17,70 +24,99 @@ export default function StoreAccessPage() {
                 body: JSON.stringify({ shop })
             })
             
-            const data = await response.json()
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`)
+            }
             
-            if (data.success && data.data.authUrl) {
+            const data = await response.json()
+            console.log('Authorization response:', data)
+            
+            // Backend returns { success: true, data: { authUrl, shop, ... } }
+            if (!data.success) {
+                throw new Error(data.error || 'Authorization failed')
+            }
+
+            // Navigate to dashboard directly if already authenticated
+            if (data.data?.shop) {
+                navigate(`/dashboard/${data.data.shop}`)
+            } else if (data.data?.authUrl) {
+                // Redirect to Shopify OAuth if needed
                 window.location.href = data.data.authUrl
             } else {
-                throw new Error('Failed to initiate authorization')
+                // Fallback: use stored shop domain
+                navigate(`/dashboard/${shop}`)
             }
         } catch (e) {
+            console.error('Authorization error:', e)
             Swal.fire({
                 title: 'Access Error',
-                text: 'Failed to connect to store for access authorization.',
+                text: 'Failed to connect to store. Please try again or contact support.',
                 icon: 'error',
-                confirmButtonColor: '#6366f1'
+                confirmButtonColor: '#1a73e8'
             })
-        } finally {
             setIsVerifying(false)
         }
     }
 
+    const handleDecline = () => {
+        localStorage.removeItem('currentShop')
+        navigate('/onboarding')
+    }
+
     return (
-        <div className="min-h-screen bg-[#F0F7FF] flex items-center justify-center p-6 relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-100/50 via-blue-50/50 to-transparent" />
-            
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center p-6 relative overflow-hidden">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="max-w-[500px] w-full bg-white rounded-[40px] p-10 shadow-[0_20px_50px_-10px_rgba(30,58,138,0.15)] border border-white/50 flex flex-col items-center text-center relative z-10"
+                className="max-w-md w-full bg-white rounded-2xl p-8 shadow-lg border border-slate-200 flex flex-col items-center text-center"
             >
-                <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center shadow-inner border border-indigo-100 mb-6">
-                    <ShieldCheck className="w-8 h-8 text-indigo-600" />
+                <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100 mb-6">
+                    <ShieldCheck className="w-8 h-8 text-blue-600" />
                 </div>
 
-                <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Review Permissions</h1>
-                <p className="text-slate-500 text-sm font-medium mb-8">AI Growth Manager requires access to optimize your store.</p>
+                <h1 className="text-2xl font-black text-slate-900 mb-2">Review Permissions</h1>
+                <p className="text-slate-600 text-sm font-medium mb-6">AI Growth Manager requires access to optimize your store.</p>
                 
-                <div className="w-full bg-slate-50 rounded-xl p-3 mb-8 flex items-center justify-center gap-2 border border-slate-200">
+                <div className="w-full bg-slate-50 rounded-lg p-3 mb-6 flex items-center gap-2 border border-slate-200">
                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span className="text-xs font-bold text-slate-600 font-mono">{shop}</span>
+                    <span className="text-xs font-semibold text-slate-700 truncate">{shop}</span>
                 </div>
 
-                <div className="w-full space-y-3 mb-8 text-left">
+                <div className="w-full space-y-2 mb-8 text-left">
                     {[
-                        { title: 'Products', desc: 'Read titles, descriptions, images, tags' },
+                        { title: 'Products', desc: 'Read titles, descriptions, images' },
                         { title: 'Orders', desc: 'Read order history and revenue' },
-                        { title: 'Analytics', desc: 'Read traffic, sessions, conversion' },
-                        { title: 'Metafields', desc: 'Read/write for AI-generated improvements' }
+                        { title: 'Analytics', desc: 'Read traffic and conversions' },
+                        { title: 'Optimization', desc: 'AI-powered improvements' }
                     ].map((item) => (
-                        <div key={item.title} className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
-                            <p className="text-sm font-black text-slate-900 mb-0.5">{item.title}</p>
-                            <p className="text-xs text-slate-400 font-medium">{item.desc}</p>
+                        <div key={item.title} className="p-3 bg-slate-50 border border-slate-100 rounded-lg">
+                            <p className="text-xs font-bold text-slate-900">{item.title}</p>
+                            <p className="text-xs text-slate-500">{item.desc}</p>
                         </div>
                     ))}
                 </div>
 
                 <div className="w-full flex gap-3">
-                    <button onClick={() => window.history.back()} className="flex-1 h-[64px] rounded-[24px] bg-slate-100 text-slate-600 font-black text-lg hover:bg-slate-200 transition-all">
-                        Decline
+                    <button onClick={handleDecline} className="btn-ghost flex-1">
+                        <ArrowLeft className="w-4 h-4" />
+                        Back
                     </button>
                     <button
                         onClick={handleAuthorize}
                         disabled={isVerifying}
-                        className="flex-[2] h-[64px] rounded-[24px] bg-indigo-600 text-white font-black text-lg uppercase tracking-[0.1em] shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center gap-3"
+                        className="btn-primary flex-[1.5] disabled:opacity-50"
                     >
-                        {isVerifying ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Allow Access'}
+                        {isVerifying ? (
+                            <>
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                Authorizing...
+                            </>
+                        ) : (
+                            <>
+                                Allow Access
+                                <ArrowLeft className="w-4 h-4 rotate-180" />
+                            </>
+                        )}
                     </button>
                 </div>
             </motion.div>

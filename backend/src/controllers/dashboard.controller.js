@@ -13,6 +13,26 @@ import { calculateHealthScore } from '../services/shopify/metrics/health.score.j
  * Get dashboard data for a merchant
  * GET /api/:shopDomain/dashboard
  */
+export async function saveOnboardingPreferences(req, res) {
+  try {
+    const { merchant } = req;
+    const { preferences } = req.body;
+    
+    // Merge new preferences into existing shop_info
+    const updatedShopInfo = {
+      ...(merchant.shopInfo || {}),
+      onboarding: preferences
+    };
+    
+    await merchant.save({ ...merchant, shopInfo: updatedShopInfo });
+    
+    return success(res, { message: 'Preferences saved successfully' });
+  } catch (err) {
+    logger.error({ err }, 'Failed to save onboarding preferences');
+    return error(res, 'Failed to save preferences', 500);
+  }
+}
+
 export async function getDashboard(req, res) {
   try {
     const { shopDomain } = req.params;

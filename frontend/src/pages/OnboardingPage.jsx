@@ -77,41 +77,13 @@ export default function OnboardingPage() {
         }
 
         try {
-            const response = await fetch(`${BACKEND_URL}/auth/shopify/initiate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ shop: formattedStore })
-            })
-            
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `Server returned ${response.status}`);
-            }
-
-            const data = await response.json()
-            
-            // Wait for animation to finish or at least progress significantly
+            // Wait for animation to finish
             await new Promise(resolve => setTimeout(resolve, 3000));
 
-            if (data.success && data.data.authUrl) {
-                window.location.href = data.data.authUrl
-            } else if (data.success && data.data.redirectTo) {
-                localStorage.setItem('currentShop', formattedStore)
-                window.location.href = data.data.redirectTo
-            } else if (data.success && data.data.shop) {
-                localStorage.setItem('currentShop', data.data.shop)
-                navigate(`/dashboard/${data.data.shop}`)
-            } else {
-                clearInterval(animationInterval);
-                setIsConnecting(false);
-                const errorMessage = data.error?.message || data.error || 'Failed to connect store. Please check your store domain.'
-                Swal.fire({
-                    title: 'Connection Error',
-                    text: errorMessage,
-                    icon: 'error',
-                    confirmButtonColor: '#6366f1'
-                });
-            }
+            // Store the shop and navigate to access review page
+            localStorage.setItem('currentShop', formattedStore)
+            clearInterval(animationInterval)
+            navigate('/store-access')
 
         } catch (error) {
             clearInterval(animationInterval);
@@ -190,24 +162,24 @@ export default function OnboardingPage() {
                         </div>
 
                         {/* Heading */}
-                        <h1 className="text-5xl font-black text-slate-900 tracking-tight mb-4">
+                        <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-3">
                             Connect Your Store
                         </h1>
 
                         {/* Subtext */}
-                        <p className="text-slate-600 text-base font-medium leading-relaxed mb-12 max-w-sm mx-auto">
+                        <p className="text-slate-600 text-sm font-medium leading-relaxed mb-10 max-w-sm mx-auto">
                             Your AI Growth Engine will analyze your revenue, customers, and performance in real-time.
                         </p>
 
                         {/* Store URL Input */}
-                        <form onSubmit={handleConnect} className="w-full flex flex-col items-center gap-6">
+                        <form onSubmit={handleConnect} className="w-full flex flex-col items-center gap-4">
                             <div className="w-full space-y-2 text-left">
                                 <label className="text-[10px] font-black uppercase tracking-widest ml-1 text-slate-400">
                                     Shopify Store URL
                                 </label>
-                                <div className={`relative flex items-center h-[64px] transition-all duration-300 ${isFocused ? 'ring-4 ring-indigo-500/10 border-indigo-600' : 'border-slate-200'} border-2 rounded-2xl overflow-hidden bg-white`}>
-                                    <div className="pl-5 pr-3">
-                                        <ShoppingBag className={`w-5 h-5 ${isFocused ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                <div className={`relative flex items-center h-10 transition-all duration-300 border rounded-lg overflow-hidden bg-white ${isFocused ? 'border-indigo-600 ring-2 ring-indigo-500/20' : 'border-slate-200'}`}>
+                                    <div className="pl-3 pr-2">
+                                        <ShoppingBag className={`w-4 h-4 ${isFocused ? 'text-indigo-600' : 'text-slate-400'}`} />
                                     </div>
                                     <input
                                         type="text"
@@ -216,25 +188,23 @@ export default function OnboardingPage() {
                                         onChange={(e) => setStoreUrl(e.target.value)}
                                         onFocus={() => setIsFocused(true)}
                                         onBlur={() => setIsFocused(false)}
-                                        className="flex-1 bg-transparent border-none outline-none text-slate-900 font-bold text-base placeholder:text-slate-300"
+                                        className="flex-1 bg-transparent border-none outline-none text-slate-900 font-medium text-sm placeholder:text-slate-400"
                                     />
-                                    <div className="pr-5 text-slate-400 font-bold text-sm uppercase pointer-events-none hidden sm:block">
+                                    <div className="pr-3 text-slate-400 font-medium text-xs hidden sm:block">
                                         .myshopify.com
                                     </div>
                                 </div>
                             </div>
 
                             {/* Activate Button */}
-                            <motion.button
+                            <button
                                 type="submit"
                                 disabled={!storeUrl}
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                className="w-full h-[64px] rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-base uppercase tracking-wide shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                                className="btn-primary w-full disabled:opacity-50"
                             >
                                 Activate AI Analysis
-                                <ArrowRight className="w-5 h-5" />
-                            </motion.button>
+                                <ArrowRight className="w-4 h-4" />
+                            </button>
                         </form>
                     </motion.div>
                 ) : (
@@ -279,10 +249,10 @@ export default function OnboardingPage() {
                                 </div>
                             </div>
 
-                            <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">
+                            <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-2">
                                 AI Engine Activating
                             </h2>
-                            <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mb-10">
+                            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mb-8">
                                 Fetching Shopify Data in Real-Time
                             </p>
 
@@ -305,7 +275,7 @@ export default function OnboardingPage() {
                                         <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${idx < currentStep ? 'bg-emerald-500 text-white' : idx === currentStep ? 'bg-indigo-600 text-white' : 'bg-slate-200'}`}>
                                             {idx < currentStep ? <CheckCircle2 className="w-4 h-4" /> : <div className={`w-1.5 h-1.5 rounded-full ${idx === currentStep ? 'bg-white animate-ping' : 'bg-slate-400'}`} />}
                                         </div>
-                                        <span className={`flex-1 text-left text-sm font-bold transition-colors ${idx === currentStep ? 'text-indigo-600' : 'text-slate-600'}`}>
+                                        <span className={`flex-1 text-left text-xs font-bold transition-colors ${idx === currentStep ? 'text-indigo-600' : 'text-slate-600'}`}>
                                             {step.label}
                                         </span>
                                         {idx === currentStep && (
