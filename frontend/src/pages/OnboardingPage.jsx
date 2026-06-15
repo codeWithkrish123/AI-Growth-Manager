@@ -139,18 +139,11 @@ export default function OnboardingPage() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -20, scale: 0.95 }}
                         transition={{ duration: 0.6, ease: "easeOut" }}
-                        className="max-w-[540px] w-full flex flex-col items-center text-center relative z-10"
+                        className="max-w-[600px] w-full bg-white/50 backdrop-blur-sm rounded-[40px] p-8 sm:p-12 shadow-[0_20px_50px_-10px_rgba(30,58,138,0.1)] border border-white/50 flex flex-col items-center text-center relative z-10"
                     >
-                        {/* 1. Sparkle Icon */}
-                        <div className="relative mb-10">
-                            <motion.div
-                                animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] }}
-                                transition={{ duration: 4, repeat: Infinity }}
-                                className="absolute inset-[-10px] bg-indigo-600 rounded-3xl blur-2xl"
-                            />
-                            <div className="relative w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-xl border border-white/40">
-                                <Sparkles className="w-10 h-10 text-indigo-600" />
-                            </div>
+                        {/* 1. Icon Header */}
+                        <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center shadow-lg border border-indigo-100 mb-8">
+                            <Sparkles className="w-10 h-10 text-indigo-600" />
                         </div>
 
                         {/* 2. Heading */}
@@ -159,19 +152,19 @@ export default function OnboardingPage() {
                         </h1>
 
                         {/* 3. Subtext */}
-                        <p className="text-slate-500 text-lg font-medium leading-relaxed mb-14 max-w-sm mx-auto">
+                        <p className="text-slate-500 text-lg font-medium leading-relaxed mb-12 max-w-sm mx-auto">
                             Your AI Growth Engine will analyze your revenue, customers, and performance in real-time.
                         </p>
 
                         {/* 4. Shopify Store URL Input */}
-                        <form onSubmit={handleConnect} className="w-full space-y-10 flex flex-col items-center">
-                            <div className="w-full space-y-3 text-left">
-                                <label className={`text-[10px] font-black uppercase tracking-[0.2em] ml-1 transition-colors ${isFocused ? 'text-indigo-600' : 'text-slate-400'}`}>
+                        <form onSubmit={handleConnect} className="w-full flex flex-col items-center gap-6">
+                            <div className="w-full space-y-2 text-left">
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] ml-6 text-slate-400">
                                     Shopify Store URL
                                 </label>
-                                <div className={`relative flex items-center h-[76px] transition-all duration-300 ${isFocused ? 'ring-8 ring-indigo-600/5 border-indigo-600 bg-white' : 'border-slate-200 bg-white shadow-sm hover:border-slate-300'} border-2 rounded-[24px] overflow-hidden`}>
+                                <div className={`relative flex items-center h-[72px] transition-all duration-300 ${isFocused ? 'ring-8 ring-indigo-600/5 border-indigo-600 bg-white' : 'border-slate-200 bg-white shadow-sm hover:border-slate-300'} border-2 rounded-[24px] overflow-hidden`}>
                                     <div className="pl-6 pr-3">
-                                        <ShoppingBag className={`w-6 h-6 transition-colors ${isFocused ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                        <ShoppingBag className={`w-6 h-6 ${isFocused ? 'text-indigo-600' : 'text-slate-400'}`} />
                                     </div>
                                     <input
                                         type="text"
@@ -180,7 +173,7 @@ export default function OnboardingPage() {
                                         onChange={(e) => setStoreUrl(e.target.value)}
                                         onFocus={() => setIsFocused(true)}
                                         onBlur={() => setIsFocused(false)}
-                                        className="flex-1 bg-transparent border-none outline-none text-slate-900 font-bold text-lg placeholder:text-slate-200"
+                                        className="flex-1 bg-transparent border-none outline-none text-slate-900 font-bold text-lg placeholder:text-slate-300"
                                     />
                                     <div className="pr-6 text-slate-400 font-black text-xs uppercase tracking-[0.1em] pointer-events-none hidden sm:block">
                                         .myshopify.com
@@ -192,7 +185,7 @@ export default function OnboardingPage() {
                             <motion.button
                                 type="submit"
                                 disabled={!storeUrl}
-                                whileHover={{ scale: 1.02, y: -2 }}
+                                whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 className="w-full h-[72px] rounded-[24px] bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-black text-lg uppercase tracking-[0.15em] shadow-2xl shadow-indigo-600/30 hover:shadow-indigo-600/40 transition-all flex items-center justify-center gap-4 group"
                             >
@@ -200,18 +193,6 @@ export default function OnboardingPage() {
                                 <ArrowRight className="w-6 h-6 group-hover:translate-x-1.5 transition-transform" />
                             </motion.button>
                         </form>
-
-                        {/* Footer Links */}
-                        <div className="mt-16 flex items-center gap-8">
-                            <Link to="/signin" className="text-xs font-black text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-[0.2em]">
-                                Cancel
-                            </Link>
-                            <div className="w-1 h-1 bg-slate-300 rounded-full" />
-                            <div className="flex items-center gap-2">
-                                <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Enterprise Secure</span>
-                            </div>
-                        </div>
                     </motion.div>
                 ) : (
                     <motion.div
