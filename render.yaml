@@ -38,6 +38,5 @@ services:
 databases:
   - name: ai-growth-db
     databaseName: ai_growth_manager
-    user: postgres
     plan: free
     region: virginia
