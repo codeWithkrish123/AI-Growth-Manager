@@ -1,16 +1,5 @@
 import { logger } from '../utils/logger.js';
 
-const REDIS_URL = process.env.REDIS_URL;
-const isRedisEnabled = !!REDIS_URL;
-
-let redisConnection = null;
-let redisCache = new InMemoryCache();
-
-if (isRedisEnabled) {
-  // Future: connect to actual Redis when available
-  logger.info('Redis URL provided - future support');
-}
-
 // In-memory cache for local development/when Redis unavailable
 class InMemoryCache {
   constructor() {
@@ -33,6 +22,16 @@ class InMemoryCache {
   async ping() {
     return 'PONG';
   }
+}
+
+const REDIS_URL = process.env.REDIS_URL;
+const isRedisEnabled = !!REDIS_URL;
+
+let redisConnection = null;
+let redisCache = new InMemoryCache();
+
+if (isRedisEnabled) {
+  logger.info('Redis URL provided - future support');
 }
 
 export { redisConnection, redisCache, isRedisEnabled };
