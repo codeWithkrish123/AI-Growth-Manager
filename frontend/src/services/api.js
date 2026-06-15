@@ -5,6 +5,11 @@ const API_BASE_URL = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
 
 export const BACKEND_URL = baseUrl;
 
+// Debug: log the URLs on load
+if (typeof window !== 'undefined') {
+  console.log('🔗 API Config:', { baseUrl, API_BASE_URL, env: import.meta.env.VITE_API_URL });
+}
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
