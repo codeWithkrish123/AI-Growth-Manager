@@ -20,6 +20,8 @@ const PriceOptimizerPage = lazy(() => import('./pages/PriceOptimizerPage'))
 const AdsPage            = lazy(() => import('./pages/AdsPage'))
 const SEOPage            = lazy(() => import('./pages/SEOPage'))
 
+const StoreAccessPage  = lazy(() => import('./pages/StoreAccessPage'))
+
 // ── Loading fallback ──────────────────────────────────────────────────────────
 function PageLoader() {
   return (
@@ -61,6 +63,7 @@ export default function App() {
           <Route path="/price-optimizer"   element={<PriceOptimizerPage />} />
           <Route path="/ads"              element={<AdsPage />} />
           <Route path="/seo"              element={<SEOPage />} />
+          <Route path="/store-access"     element={<StoreAccessPage />} />
 
           <Route path="*"                  element={<Navigate to="/" replace />} />
         </Routes>
