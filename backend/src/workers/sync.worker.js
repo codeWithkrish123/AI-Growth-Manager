@@ -1,5 +1,5 @@
 import { Queue, Worker } from 'bullmq';
-import { redisConnection } from '../config/redis.js';
+import { redisConnection, isRedisEnabled } from '../config/redis.js';
 import { fetchProducts } from '../services/shopify/products.service.js';
 import { fetchOrders } from '../services/shopify/order.services.js';
 import { fetchStoreInfo } from '../services/shopify/store.service.js';
@@ -9,40 +9,56 @@ import { StoreSnapshotModel } from '../models/StoreSnapshot.model.js';
 import { MerchantModel } from '../models/Merchant.model.js';
 import { logger } from '../utils/logger.js';
 
-const defaultOptions = {
-  connection: redisConnection,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 3000 },
-    removeOnComplete: 100,
-    removeOnFail: 200,
-  },
-};
+// Only create queues if Redis is enabled
+export let syncQueue = null;
+export let fixQueue = null;
+export let webhookQueue = null;
+export let analysisQueue = null;
 
-// ─── Sync Queue (exported for webhook processor) ─────────────────────────────
-export const syncQueue = new Queue('store-sync', defaultOptions);
+if (isRedisEnabled) {
+  const defaultOptions = {
+    connection: redisConnection,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 3000 },
+      removeOnComplete: 100,
+      removeOnFail: 200,
+    },
+  };
+
+  syncQueue = new Queue('store-sync', defaultOptions);
+  fixQueue = new Queue('apply-fix', defaultOptions);
+  webhookQueue = new Queue('webhook-events', defaultOptions);
+  analysisQueue = new Queue('store-analysis', defaultOptions);
+}
 
 export async function queueAnalysis(shopDomain, snapshotId) {
+  if (!analysisQueue) {
+    logger.warn('Redis not enabled - analysis queue unavailable');
+    return null;
+  }
   const job = await analysisQueue.add('analyze-store', { shopDomain, snapshotId }, {
     jobId: `${shopDomain}-analysis`,
   });
   return job;
 }
 
-// ─── Fix Queue ────────────────────────────────────────────────────────────────
-export const fixQueue = new Queue('apply-fix', defaultOptions);
-
 export async function queueFix(fixActionId, shopDomain) {
+  if (!fixQueue) {
+    logger.warn('Redis not enabled - fix queue unavailable');
+    return null;
+  }
   const job = await fixQueue.add('apply-fix', { fixActionId, shopDomain }, {
     jobId: fixActionId,
   });
   return job;
 }
 
-// ─── Webhook Queue ────────────────────────────────────────────────────────────
-export const webhookQueue = new Queue('webhook-events', defaultOptions);
-
 export async function queueWebhookEvent(webhookEventId) {
+  if (!webhookQueue) {
+    logger.warn('Redis not enabled - webhook queue unavailable');
+    return null;
+  }
   const job = await webhookQueue.add('process-webhook', { webhookEventId }, {
     jobId: webhookEventId,
   });
@@ -51,6 +67,11 @@ export async function queueWebhookEvent(webhookEventId) {
 
 // ─── Sync Worker ─────────────────────────────────────────────────────────────
 export function startSyncWorker() {
+  if (!isRedisEnabled) {
+    logger.info('Redis not enabled - sync worker disabled');
+    return;
+  }
+  
   const worker = new Worker(
     'store-sync',
     async (job) => {
