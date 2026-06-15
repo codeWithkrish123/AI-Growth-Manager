@@ -118,7 +118,7 @@ export default function SignInPage() {
                     {/* Auth Method Selector */}
                     <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl mb-8">
                         <button onClick={() => setAuthMethod('google')} className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all ${authMethod === 'google' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>
-                            Google Account
+                            Sign in with Google
                         </button>
                         <button onClick={() => setAuthMethod('shopify')} className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all ${authMethod === 'shopify' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>
                             Shopify Store
