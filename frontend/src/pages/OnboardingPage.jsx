@@ -126,10 +126,11 @@ export default function OnboardingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
-            {/* Background Glows */}
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-400/5 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-400/5 rounded-full blur-[120px] pointer-events-none" />
+        <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
+            {/* Animated Background Orbs */}
+            <div className="absolute top-10 left-10 w-72 h-72 bg-sky-300/20 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-300/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+            <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-indigo-300/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
 
             <AnimatePresence mode="wait">
                 {!isConnecting ? (
@@ -187,7 +188,7 @@ export default function OnboardingPage() {
                                 disabled={!storeUrl}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="w-full h-[64px] rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black text-base uppercase tracking-wide shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                                className="w-full h-[64px] rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-black text-base uppercase tracking-wide shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                             >
                                 Activate AI Analysis
                                 <ArrowRight className="w-5 h-5" />
