@@ -49,14 +49,16 @@ if (!config.isDev) {
 // ── CORS ──────────────────────────────────────────────────────────────────────
 const allowedOrigins = config.isDev
   ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3001']
-  : [process.env.FRONTEND_URL].filter(Boolean);
+  : [process.env.FRONTEND_URL, 'https://ai-growth-manager.vercel.app'].filter(Boolean);
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow no-origin (mobile apps, curl, Shopify webhooks)
     if (!origin) return callback(null, true);
     if (config.isDev) return callback(null, true);
+    // Allow exact matches or vercel.app subdomains
     if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
     callback(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
