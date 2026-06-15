@@ -250,8 +250,8 @@ export default function ProductsPage() {
                         </td>
                         <td className="text-right">
                           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleOptimize(p)} disabled={optimizingId === p.id} className="btn-primary text-xs py-1.5 px-3">
-                              {optimizingId === p.id ? 'Optimizing...' : 'Optimize'}
+                            <button onClick={() => handleOptimize(p)} className="btn-primary text-xs py-1.5 px-3">
+                              Optimize
                             </button>
                             <button onClick={() => setMenuOpenId(menuOpenId === p.id ? null : p.id)} className="btn-ghost text-xs p-1.5 relative">
                               <MoreVertical className="w-4 h-4" />
