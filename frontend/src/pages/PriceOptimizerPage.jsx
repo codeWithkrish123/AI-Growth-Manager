@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import { dashboardAPI, errMsg } from '../services/api'
+import Swal from 'sweetalert2'
 
 const IMPACT_COLOR = { high: 'badge-red', medium: 'badge-amber', low: 'badge-indigo' }
 const ACTION_LABEL = { reduce_price: 'Reduce Price', maintain_price: 'Hold Price', increase_price: 'Raise Price' }
@@ -45,9 +46,27 @@ export default function PriceOptimizerPage() {
       setSuggestions(data.suggestions || [])
       setSummary(data)
       setStatus('done')
+
+      Swal.fire({
+        title: 'Analysis Complete',
+        text: `Successfully scanned ${data.analyzedProducts || 0} products for pricing opportunities.`,
+        icon: 'success',
+        confirmButtonColor: '#6366f1',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      });
     } catch (e) {
-      setError(errMsg(e, 'Analysis failed. Ensure your store is synced.'))
+      const errorMsg = errMsg(e, 'Analysis failed. Ensure your store is synced.');
+      setError(errorMsg)
       setStatus('error')
+
+      Swal.fire({
+        title: 'Analysis Failed',
+        text: errorMsg,
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      });
     }
   }
 
@@ -59,8 +78,27 @@ export default function PriceOptimizerPage() {
       const res    = await dashboardAPI.optimizePrices(shop, { productId: productId.trim(), competitorPrices: prices })
       const data   = res.data?.data || res.data
       setAiResult(data)
+
+      if (!data.error) {
+        Swal.fire({
+          title: 'AI Insight Ready',
+          text: 'The optimal price has been calculated based on market signals.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false,
+          background: isDark ? '#1e293b' : '#fff',
+          color: isDark ? '#fff' : '#1e293b'
+        });
+      }
     } catch (e) {
       setAiResult({ error: errMsg(e, 'AI suggestion failed') })
+      Swal.fire({
+        title: 'AI Error',
+        text: 'Could not generate a suggestion for this product ID.',
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      });
     } finally {
       setAiLoading(false)
     }

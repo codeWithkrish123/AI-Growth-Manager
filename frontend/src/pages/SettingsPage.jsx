@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { User, Shield, Zap, Store, LogOut, Menu, ChevronRight, ExternalLink, Bell, Settings } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2'
 
 const AI_SETTINGS_KEY = 'aiSettings'
 
@@ -44,6 +45,58 @@ export default function SettingsPage() {
     localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(next))
   }
 
+  const handleSignOut = () => {
+    Swal.fire({
+      title: 'Sign Out?',
+      text: 'Are you sure you want to sign out?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#6366f1',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Yes, Sign Out',
+      background: isDark ? '#1e293b' : '#fff',
+      color: isDark ? '#fff' : '#1e293b'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.clear();
+        navigate('/');
+      }
+    });
+  };
+
+  const handleDisconnect = () => {
+    Swal.fire({
+      title: 'Disconnect Store?',
+      text: 'This will remove your connection. You can reconnect later.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Yes, Disconnect',
+      background: isDark ? '#1e293b' : '#fff',
+      color: isDark ? '#fff' : '#1e293b'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.clear();
+        navigate('/onboarding');
+      }
+    });
+  };
+
+  const handleDeleteAccount = () => {
+    Swal.fire({
+      title: 'Delete Account?',
+      text: 'This action is permanent.',
+      icon: 'error',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Yes, Delete',
+      background: isDark ? '#1e293b' : '#fff',
+      color: isDark ? '#fff' : '#1e293b'
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex">
       <Sidebar active="settings" shop={shop} onDarkModeToggle={toggleDark} isDark={isDark}
@@ -58,7 +111,7 @@ export default function SettingsPage() {
               <h1 className="text-base font-semibold text-slate-900">Settings</h1>
             </div>
           </div>
-          <button onClick={() => { localStorage.clear(); navigate('/') }}
+          <button onClick={handleSignOut}
             className="flex items-center gap-2 text-sm text-slate-500 hover:text-red-500 transition-colors">
             <LogOut className="w-4 h-4" /> Sign Out
           </button>
@@ -118,7 +171,7 @@ export default function SettingsPage() {
                       <ExternalLink className="w-4 h-4" /> Open Shopify Admin
                     </a>
                   )}
-                  <button onClick={() => { localStorage.clear(); navigate('/onboarding') }}
+                  <button onClick={handleDisconnect}
                     className="px-4 py-2 bg-red-50 border border-red-100 rounded-lg text-sm font-medium text-red-600 hover:bg-red-100 transition-colors">
                     Disconnect Store
                   </button>
@@ -229,7 +282,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-slate-900 mb-4">Danger Zone</h3>
-                    <button className="px-4 py-2 bg-red-50 border border-red-100 rounded-lg text-sm font-semibold text-red-600 hover:bg-red-100">
+                    <button onClick={handleDeleteAccount} className="px-4 py-2 bg-red-50 border border-red-100 rounded-lg text-sm font-semibold text-red-600 hover:bg-red-100">
                       Delete Account & All Data
                     </button>
                   </div>
