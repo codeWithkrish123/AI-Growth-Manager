@@ -182,7 +182,7 @@ export default function OnboardingPage() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -20, scale: 0.95 }}
                         transition={{ duration: 0.6, ease: "easeOut" }}
-                        className="max-w-[600px] w-full bg-white rounded-3xl p-8 sm:p-12 shadow-xl flex flex-col items-center text-center relative z-10"
+                        className="max-w-[600px] w-full bg-white/80 rounded-3xl p-8 sm:p-12 flex flex-col items-center text-center relative z-10"
                     >
                         {/* Icon Header */}
                         <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center shadow-lg border border-indigo-100 mb-8">
