@@ -114,7 +114,7 @@ export async function deleteProduct(req, res) {
 
     // Invalidate cache
     const { shopifyCache } = await import('../utils/cache.js');
-    shopifyCache.delete(`products_${shopDomain}`);
+    shopifyCache.delete(shopifyCache.key.products(shopDomain));
 
     logger.info({ shopDomain, productId }, 'Product deleted');
     return success(res, { message: 'Product deleted successfully' });

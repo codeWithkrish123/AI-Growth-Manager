@@ -140,3 +140,23 @@ export async function updateProduct(shopDomain, accessToken, productId, payload)
     throw new ShopifyApiError(`Product update failed: ${err.message}`);
   }
 }
+
+/**
+ * Delete a product via Shopify REST API
+ */
+export async function deleteProduct(shopDomain, accessToken, productId) {
+  try {
+    const client = new shopify.clients.Rest({
+      session: { shop: shopDomain, accessToken },
+    });
+
+    await client.delete({
+      path: `products/${productId}`,
+    });
+
+    return true;
+  } catch (err) {
+    logger.error({ err, shopDomain, productId }, 'Failed to delete product');
+    throw new ShopifyApiError(`Product deletion failed: ${err.message}`);
+  }
+}

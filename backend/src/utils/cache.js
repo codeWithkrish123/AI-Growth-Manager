@@ -175,6 +175,27 @@ export const shopifyCache = {
   get: (key) => {
     return cache.get(key);
   },
+
+  /**
+   * Delete a value from cache
+   */
+  del: (key) => {
+    return cache.delete(key);
+  },
+
+  /**
+   * Delete a value from cache (alias)
+   */
+  delete: (key) => {
+    return cache.delete(key);
+  },
+
+  /**
+   * Delete all keys matching a pattern
+   */
+  deletePattern: (pattern) => {
+    return cache.deletePattern(pattern);
+  },
 };
 
 export default cache;
