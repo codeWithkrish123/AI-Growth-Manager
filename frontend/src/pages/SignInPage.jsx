@@ -110,8 +110,8 @@ export default function SignInPage() {
 
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-[440px] px-4">
                     <div className="mb-10">
-                        <h2 className="text-4xl font-black text-slate-900 tracking-tight leading-tight mb-2">
-                            Welcome to <br /> AI Growth Manager
+                        <h2 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">
+                            Welcome to <br />AI Growth Manager
                         </h2>
                     </div>
 
@@ -148,7 +148,7 @@ export default function SignInPage() {
                     {/* Shopify Auth */}
                     {authMethod === 'shopify' && (
                         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8">
-                            <p className="text-sm font-medium text-slate-500">Connect your Shopify store</p>
+                            <p className="text-sm font-medium text-slate-600">Enter your Shopify store domain</p>
                             <form onSubmit={(e) => { e.preventDefault(); handleShopifySignIn(); }} className="space-y-6">
                                 <div className="space-y-3 group relative">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Store Domain</label>
