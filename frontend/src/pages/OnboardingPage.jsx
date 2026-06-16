@@ -28,9 +28,19 @@ export default function OnboardingPage() {
         const merchant = searchParams.get('merchant')
         
         if (token) {
+            console.log('🎟️ New token received from OAuth')
             localStorage.setItem('token', token)
-            localStorage.setItem('currentShop', merchant || '')
-            setIsAuthenticated(true)
+            // If we have a token but no merchant in URL, it means it's a new Google login
+            // We should clear currentShop to force them to connect a store
+            if (!merchant) {
+                console.log('🧹 Clearing old shop data for new user')
+                localStorage.removeItem('currentShop')
+                setIsAuthenticated(true)
+            } else {
+                localStorage.setItem('currentShop', merchant)
+                setIsAuthenticated(true)
+                navigate(`/dashboard/${merchant}`)
+            }
             window.history.replaceState({}, document.title, '/onboarding')
         } else {
             const existingToken = localStorage.getItem('token')
