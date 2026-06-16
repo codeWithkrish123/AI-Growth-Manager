@@ -204,13 +204,18 @@ export class Merchant {
       },
       
       save: async function() {
+        // We use updateById which expects plain accessToken and encrypts it.
+        // But mapRowToMerchant gives us accessTokenEnc.
+        // We should decrypt it first to avoid double encryption.
+        const plainToken = this.getAccessToken();
+        
         return await Merchant.updateById(this.id, {
           scope: this.scope,
           isActive: this.isActive,
           planTier: this.planTier,
           shopInfo: this.shopInfo,
           lastSyncAt: this.lastSyncAt,
-          accessToken: this.accessTokenEnc // Will be encrypted in updateById
+          accessToken: plainToken
         });
       }
     };

@@ -60,8 +60,25 @@ export async function initiateShopifyAuth(req, res) {
       return error(res, 'Server configuration error. Please contact support.', 500);
     }
 
-    // Generate nonce for security
-    const nonce = crypto.randomBytes(16).toString('hex');
+    // Build state parameter with optional merchant ID for account linking
+    const jwt = (await import('jsonwebtoken')).default;
+    const authHeader = req.headers.authorization;
+    let stateData = { nonce: crypto.randomBytes(16).toString('hex') };
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, config.jwt.secret);
+        if (decoded.merchantId) {
+          stateData.merchantId = decoded.merchantId;
+          logger.info({ merchantId: decoded.merchantId }, 'Linking Shopify store to existing merchant record');
+        }
+      } catch (err) {
+        logger.warn({ err: err.message }, 'Invalid token during Shopify OAuth initiation, proceeding without linking');
+      }
+    }
+    
+    const state = Buffer.from(JSON.stringify(stateData)).toString('base64');
     
     // Build Shopify OAuth URL
     const redirectUri = `${config.shopify.appUrl}/auth/shopify/callback`;
@@ -70,14 +87,14 @@ export async function initiateShopifyAuth(req, res) {
       `client_id=${config.shopify.apiKey}&` +
       `scope=${scopes.join(',')}&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-      `state=${nonce}`;
+      `state=${state}`;
 
     logger.info({ shopDomain }, 'Initiating Shopify OAuth');
 
     return success(res, {
       authUrl,
       shopDomain,
-      nonce
+      state
     });
 
   } catch (err) {
@@ -113,7 +130,18 @@ export async function handleShopifyCallback(req, res) {
       return res.redirect(`${config.frontendUrl}/signin?error=verification_failed`);
     }
 
-    logger.info({ shopDomain }, 'HMAC verified, exchanging code for access token');
+    // Decode state to check for merchantId (account linking)
+    let merchantId = null;
+    if (state) {
+      try {
+        const decodedState = JSON.parse(Buffer.from(state, 'base64').toString());
+        merchantId = decodedState.merchantId;
+      } catch (e) {
+        logger.warn('Failed to decode OAuth state');
+      }
+    }
+
+    logger.info({ shopDomain, merchantId }, 'HMAC verified, exchanging code for access token');
 
     // Exchange authorization code for access token
     let tokenResponse;
@@ -139,21 +167,44 @@ export async function handleShopifyCallback(req, res) {
     }
 
     // Create or update merchant
+    let merchant;
     try {
-      const merchant = await Merchant.create({
-        shopDomain,
-        accessToken: tokenResponse.access_token,
-        scope: tokenResponse.scope,
-        shopInfo: {
-          ...shopInfo,
-          connectedAt: new Date().toISOString(),
-          authProvider: 'shopify'
-        },
-        isActive: true,
-        planTier: 'free'
-      });
-      logger.info({ shopDomain, merchantId: merchant.id }, 'Shopify OAuth completed successfully');
+      if (merchantId) {
+        // Account linking: update the existing merchant record
+        merchant = await MerchantModel.findOneAndUpdate(
+          { _id: merchantId },
+          {
+            shopDomain,
+            accessToken: tokenResponse.access_token,
+            scope: tokenResponse.scope,
+            shopInfo: {
+              ...shopInfo,
+              connectedAt: new Date().toISOString(),
+              authProvider: 'shopify_linked'
+            },
+            isActive: true
+          }
+        );
+        logger.info({ shopDomain, merchantId }, 'Merchant record linked and updated');
+      }
 
+      if (!merchant) {
+        // Fallback or new install: create or update by shopDomain
+        merchant = await Merchant.create({
+          shopDomain,
+          accessToken: tokenResponse.access_token,
+          scope: tokenResponse.scope,
+          shopInfo: {
+            ...shopInfo,
+            connectedAt: new Date().toISOString(),
+            authProvider: 'shopify'
+          },
+          isActive: true,
+          planTier: 'free'
+        });
+        logger.info({ shopDomain, merchantId: merchant.id }, 'Shopify OAuth completed successfully');
+      }
+      
       // Register webhooks asynchronously (don't block redirect)
       registerWebhooks(shopDomain, tokenResponse.access_token).catch(err => {
         logger.warn({ shopDomain, err: err.message }, 'Webhook registration failed (non-critical)');

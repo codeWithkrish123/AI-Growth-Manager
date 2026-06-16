@@ -130,46 +130,84 @@ export default function DashboardPage() {
     
     // Capture token if present in URL (e.g. after Shopify OAuth)
     const params = new URLSearchParams(window.location.search)
-    const token = params.get('token')
-    if (token) {
-      console.log('🎟️ New session token received')
-      localStorage.setItem('token', token)
-      // Clean URL
-      window.history.replaceState({}, document.title, window.location.pathname)
+    const urlToken = params.get('token')
+    
+    if (urlToken) {
+      console.log('🎟️ New session token received from URL')
+      localStorage.setItem('token', urlToken)
+      // We must ensure the next fetch uses this token
+      // Axios request interceptor will read it from localStorage
+    }
+
+    const currentToken = urlToken || localStorage.getItem('token')
+    if (!currentToken) {
+      console.warn('⚠️ No token found, redirecting to signin')
+      navigate('/signin')
+      return
     }
 
     localStorage.setItem('currentShop', shop)
-    fetchAll()
+    
+    // Small delay to ensure localStorage is effectively updated before axios interceptor runs
+    // although localStorage is synchronous, this helps with some race conditions in React
+    const timer = setTimeout(() => {
+      fetchAll()
+    }, 100)
+
+    // Clean URL
+    if (urlToken) {
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
 
     // Auto-refresh once after 4s if this is a fresh connect (success=true in URL)
     if (params.get('success') === 'true') {
-      const t = setTimeout(() => fetchAll(), 4000)
-      return () => clearTimeout(t)
+      const refreshTimer = setTimeout(() => fetchAll(), 4000)
+      return () => {
+        clearTimeout(timer)
+        clearTimeout(refreshTimer)
+      }
     }
-  }, [shop])
+    
+    return () => clearTimeout(timer)
+  }, [shop, navigate])
 
   const fetchAll = async () => {
     setLoading(true)
-    const [dashRes, histRes, fixRes] = await Promise.allSettled([
-      dashboardAPI.getDashboardData(shop),
-      dashboardAPI.getHealthHistory(shop),
-      dashboardAPI.getFixes(shop),
-    ])
-    if (dashRes.status === 'fulfilled') {
-      const d = dashRes.value.data?.data || dashRes.value.data
-      setDashData(d)
-      setLastSynced(new Date().toLocaleTimeString())
-      if (d?.tokenExpired) showToast('⚠️ Token expired — showing cached data. Reconnect store.', 'error')
+    console.log('🔄 Fetching dashboard data for:', shop)
+    try {
+      const [dashRes, histRes, fixRes] = await Promise.allSettled([
+        dashboardAPI.getDashboardData(shop),
+        dashboardAPI.getHealthHistory(shop),
+        dashboardAPI.getFixes(shop),
+      ])
+      
+      if (dashRes.status === 'fulfilled') {
+        const d = dashRes.value.data?.data || dashRes.value.data
+        setDashData(d)
+        setLastSynced(new Date().toLocaleTimeString())
+        if (d?.tokenExpired) showToast('⚠️ Token expired — showing cached data. Reconnect store.', 'error')
+      } else {
+        console.error('❌ Dashboard data fetch failed:', dashRes.reason)
+        if (dashRes.reason?.response?.status === 401) {
+          // If we get 401 even after setting token, something is wrong with the token
+          console.error('🎟️ Token invalid or expired')
+        }
+      }
+      
+      if (histRes.status === 'fulfilled') {
+        const d = histRes.value.data?.data || histRes.value.data || []
+        setHistoryData(Array.isArray(d) ? d : [])
+      }
+      
+      if (fixRes.status === 'fulfilled') {
+        const d = fixRes.value.data?.data || fixRes.value.data || []
+        setAiActions(Array.isArray(d) ? d.slice(0, 5) : [])
+      }
+    } catch (err) {
+      console.error('❌ fetchAll fatal error:', err)
+    } finally {
+      setLoading(false)
     }
-    if (histRes.status === 'fulfilled') {
-      const d = histRes.value.data?.data || histRes.value.data || []
-      setHistoryData(Array.isArray(d) ? d : [])
-    }
-    if (fixRes.status === 'fulfilled') {
-      const d = fixRes.value.data?.data || fixRes.value.data || []
-      setAiActions(Array.isArray(d) ? d.slice(0, 5) : [])
-    }
-    setLoading(false)
   }
 
   const handleSync = async () => {
