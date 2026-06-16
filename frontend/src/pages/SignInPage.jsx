@@ -21,7 +21,7 @@ export default function SignInPage() {
     const handleGoogleSignIn = async () => {
         setGoogleLoading(true)
         try {
-            const response = await fetch(`${BACKEND_URL}/google/auth/google`)
+            const response = await fetch(`${BACKEND_URL}/api/google/auth/google`)
             const data = await response.json()
             if (data.success && data.data.authUrl) {
                 window.location.href = data.data.authUrl
