@@ -33,6 +33,9 @@ export default function SignInPage() {
             
             const data = await response.json()
             if (data.success && data.data.authUrl) {
+                if (data.data.debugRedirectUri) {
+                    console.log('✅ Backend is using Redirect URI:', data.data.debugRedirectUri)
+                }
                 window.location.href = data.data.authUrl
             } else {
                 console.error('❌ Invalid response data:', data)
