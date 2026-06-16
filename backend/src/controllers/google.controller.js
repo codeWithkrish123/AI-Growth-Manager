@@ -14,7 +14,8 @@ export async function getGoogleAuthUrl(req, res) {
     ];
 
     // Log the redirect URI being used for debugging
-    const currentRedirectUri = oauth2Client.redirectUri;
+    const currentRedirectUri = oauth2Client.redirectUri || oauth2Client._redirectUri;
+    console.log('🔍 GOOGLE OAUTH DEBUG - Redirect URI:', currentRedirectUri);
     logger.info({ currentRedirectUri }, 'Generating Google Auth URL with redirect URI');
 
     const url = oauth2Client.generateAuthUrl({
@@ -23,7 +24,10 @@ export async function getGoogleAuthUrl(req, res) {
       prompt: 'consent',
     });
 
-    return success(res, { authUrl: url });
+    return success(res, { 
+        authUrl: url,
+        debugRedirectUri: currentRedirectUri // Sending this to frontend for easy checking
+    });
   } catch (err) {
     logger.error({ err }, 'Google auth URL generation failed');
     return error(res, 'Failed to generate auth URL', 500);
