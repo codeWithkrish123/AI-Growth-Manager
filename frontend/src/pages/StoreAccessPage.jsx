@@ -18,11 +18,15 @@ export default function StoreAccessPage() {
     const handleAuthorize = async () => {
         setIsVerifying(true)
         try {
+            const token = localStorage.getItem('token')
             // Use relative URL so Vite proxy forwards to backend (avoids cross-origin issues)
             const url = BACKEND_URL ? `${BACKEND_URL}/api/auth/shopify/initiate` : '/api/auth/shopify/initiate'
             const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : ''
+                },
                 body: JSON.stringify({ shop })
             })
 

@@ -127,11 +127,21 @@ export default function DashboardPage() {
   useEffect(() => {
     document.title = 'Dashboard – AI Growth Manager'
     if (!shop) { navigate('/onboarding'); return }
+    
+    // Capture token if present in URL (e.g. after Shopify OAuth)
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+    if (token) {
+      console.log('🎟️ New session token received')
+      localStorage.setItem('token', token)
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+
     localStorage.setItem('currentShop', shop)
     fetchAll()
 
     // Auto-refresh once after 4s if this is a fresh connect (success=true in URL)
-    const params = new URLSearchParams(window.location.search)
     if (params.get('success') === 'true') {
       const t = setTimeout(() => fetchAll(), 4000)
       return () => clearTimeout(t)

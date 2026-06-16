@@ -164,8 +164,16 @@ export async function handleShopifyCallback(req, res) {
       return res.redirect(`${config.frontendUrl}/signin?error=merchant_creation_failed`);
     }
 
-    // Redirect to frontend with success
-    const redirectUrl = `${config.frontendUrl}/dashboard/${encodeURIComponent(shopDomain)}?success=true`;
+    // Generate JWT token for the session
+    const jwt = (await import('jsonwebtoken')).default;
+    const token = jwt.sign(
+      { merchantId: merchant.id, shopDomain: merchant.shopDomain },
+      config.jwt.secret,
+      { expiresIn: '7d' }
+    );
+
+    // Redirect to frontend with success and token
+    const redirectUrl = `${config.frontendUrl}/dashboard/${encodeURIComponent(shopDomain)}?token=${token}&success=true`;
     res.redirect(redirectUrl);
 
   } catch (err) {

@@ -93,7 +93,7 @@ export async function handleGoogleCallback(req, res) {
         merchantId: merchant.id,
         email: userInfo.email,
       },
-      process.env.JWT_SECRET,
+      config.jwt.secret,
       { expiresIn: '7d' }
     );
 
