@@ -52,6 +52,39 @@ export async function connectDB() {
       await client.query('SELECT NOW()');
       logger.info('PostgreSQL connected successfully');
       
+      // ─── Automatic Schema Initialization ─────────────────────────────────────
+      // Check if merchants table exists
+      const tableCheck = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = 'merchants'
+        );
+      `);
+      
+      if (!tableCheck.rows[0].exists) {
+        logger.warn('Database tables missing. Starting automatic initialization...');
+        try {
+          const fs = await import('fs');
+          const path = await import('path');
+          const { fileURLToPath } = await import('url');
+          
+          const __filename = fileURLToPath(import.meta.url);
+          const __dirname = path.dirname(__filename);
+          const schemaPath = path.resolve(__dirname, '../database/schema.sql');
+          
+          if (fs.existsSync(schemaPath)) {
+            const schema = fs.readFileSync(schemaPath, 'utf8');
+            await client.query(schema);
+            logger.info('✅ Database schema initialized successfully');
+          } else {
+            logger.error(`Schema file not found at: ${schemaPath}`);
+          }
+        } catch (schemaErr) {
+          logger.error({ err: schemaErr.message }, 'Failed to initialize database schema');
+        }
+      }
+      // ────────────────────────────────────────────────────────────────────────
+      
       // Log connection pool status
       logger.info({
         totalCount: pool.totalCount,
