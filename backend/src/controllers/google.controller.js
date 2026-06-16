@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import jwt from 'jsonwebtoken';
+import { config } from '../config/index.js';
 import { MerchantModel } from '../models/index.js';
 import { success, error } from '../utils/response.js';
 import { logger } from '../utils/logger.js';
