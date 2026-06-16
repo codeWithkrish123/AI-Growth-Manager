@@ -13,21 +13,13 @@ export async function getGoogleAuthUrl(req, res) {
       'https://www.googleapis.com/auth/userinfo.profile'
     ];
 
-    // Log the redirect URI being used for debugging
-    const currentRedirectUri = oauth2Client.redirectUri || oauth2Client._redirectUri;
-    console.log('🔍 GOOGLE OAUTH DEBUG - Redirect URI:', currentRedirectUri);
-    logger.info({ currentRedirectUri }, 'Generating Google Auth URL with redirect URI');
-
     const url = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
       prompt: 'consent',
     });
 
-    return success(res, { 
-        authUrl: url,
-        debugRedirectUri: currentRedirectUri // Sending this to frontend for easy checking
-    });
+    return success(res, { authUrl: url });
   } catch (err) {
     logger.error({ err }, 'Google auth URL generation failed');
     return error(res, 'Failed to generate auth URL', 500);
