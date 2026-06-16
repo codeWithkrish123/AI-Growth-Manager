@@ -3,10 +3,7 @@ import { getGoogleAuthUrl, handleGoogleCallback } from '../controllers/google.co
 
 const router = express.Router();
 
-// Get Google OAuth URL
-router.get('/auth/google', getGoogleAuthUrl);
-
-// Handle Google OAuth callback
-router.get('/auth/google/callback', handleGoogleCallback);
+router.get('/',          getGoogleAuthUrl);
+router.get('/callback',  handleGoogleCallback);
 
 export default router;

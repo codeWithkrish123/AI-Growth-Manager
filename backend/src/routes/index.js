@@ -49,7 +49,7 @@ router.get('/', handleEmbeddedAppLaunch);
 router.get('/auth/shopify',          authBegin);
 router.get('/auth/callback',         authCallback);
 router.post('/auth/oauth-url',       getOAuthUrl);
-router.use('/api/google',            googleRoutes);
+router.use('/auth/google',            googleRoutes);
 
 // ── Shopify OAuth (public) ─────────────────────────────────────────────────────
 router.post('/api/auth/shopify/initiate', rateLimiter, initiateShopifyAuth);
