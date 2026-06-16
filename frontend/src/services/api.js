@@ -1,17 +1,22 @@
 import axios from 'axios';
 
-// Hardcode production URL for Vercel deployment
-const baseUrl = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
-  ? 'https://ai-growth-backend-aokd.onrender.com'
-  : (import.meta.env.VITE_API_URL || '');
+// Production backend URL - Hardcoded to ensure connection works even if env vars fail during build
+const PRODUCTION_BACKEND = 'https://ai-growth-backend-aokd.onrender.com';
 
-const API_BASE_URL = baseUrl ? (baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`) : '/api';
+// Use environment variable for API URL with fallback for local development
+const baseUrl = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+  ? (import.meta.env.VITE_API_URL || 'http://localhost:3001/api')
+  : (import.meta.env.VITE_API_URL || PRODUCTION_BACKEND);
 
-export const BACKEND_URL = baseUrl;
+// Ensure we have a clean base for API calls
+const API_BASE_URL = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
+
+// BACKEND_URL is the root of the backend (without /api)
+export const BACKEND_URL = baseUrl.endsWith('/api') ? baseUrl.replace(/\/api$/, '') : baseUrl;
 
 // Debug: log the URLs on load
 if (typeof window !== 'undefined') {
-  console.log('🔗 API Config:', { baseUrl, API_BASE_URL, hostname: window.location.hostname });
+  console.log('🔗 API Config:', { baseUrl, API_BASE_URL, BACKEND_URL, hostname: window.location.hostname });
 }
 
 const api = axios.create({

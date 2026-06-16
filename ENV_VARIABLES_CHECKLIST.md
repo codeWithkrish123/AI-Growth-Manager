@@ -79,7 +79,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 4. Create OAuth 2.0 credentials (Web application)
 5. Authorized redirect URIs:
    ```
-   https://ai-growth-backend-XXXX.onrender.com/google/auth/google/callback
+   https://ai-growth-backend-XXXX.onrender.com/auth/google/callback
    https://your-frontend.vercel.app/
    ```
 6. Copy Client ID and Secret

@@ -152,7 +152,7 @@ Expected: {"status":"ok"}
 5. Select "Web application"
 6. Add Authorized redirect URI:
    ```
-   https://your-backend-XXXX.onrender.com/google/auth/google/callback
+   https://your-backend-XXXX.onrender.com/auth/google/callback
    ```
 7. Copy Client ID and Secret
 8. Add to Render environment variables

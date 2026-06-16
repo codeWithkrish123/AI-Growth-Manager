@@ -424,7 +424,7 @@ function getExampleValue(key, rule) {
     APP_URL: 'https://your-app-url.ngrok.io',
     GOOGLE_CLIENT_ID: 'your_client_id.apps.googleusercontent.com',
     GOOGLE_CLIENT_SECRET: 'your_google_client_secret',
-    GOOGLE_REDIRECT_URI: 'http://localhost:3001/google/auth/google/callback',
+    GOOGLE_REDIRECT_URI: 'http://localhost:3001/auth/google/callback',
     JWT_SECRET: 'your_super_secure_jwt_secret_key_minimum_32_chars',
     ENCRYPTION_KEY: 'your_32_character_encryption_key_here',
     OPENAI_API_KEY: 'sk-your_openai_api_key_here',

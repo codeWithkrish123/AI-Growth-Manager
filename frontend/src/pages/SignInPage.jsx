@@ -20,16 +20,31 @@ export default function SignInPage() {
 
     const handleGoogleSignIn = async () => {
         setGoogleLoading(true)
+        const authUrl = `${BACKEND_URL}/auth/google`
+        console.log('🚀 Initiating Google Sign-In:', { authUrl, BACKEND_URL })
+        
         try {
-            const response = await fetch(`${BACKEND_URL}/auth/google`)
+            const response = await fetch(authUrl)
+            if (!response.ok) {
+                const errorText = await response.text()
+                console.error('❌ Google Auth URL fetch failed:', { status: response.status, errorText })
+                throw new Error(`Server responded with ${response.status}`)
+            }
+            
             const data = await response.json()
             if (data.success && data.data.authUrl) {
                 window.location.href = data.data.authUrl
             } else {
+                console.error('❌ Invalid response data:', data)
                 Swal.fire({ title: 'Error', text: 'Failed to get auth URL', icon: 'error' })
             }
         } catch (error) {
-            Swal.fire({ title: 'Error', text: 'Connection failed', icon: 'error' })
+            console.error('❌ Connection Error:', error)
+            Swal.fire({ 
+                title: 'Connection Failed', 
+                text: `Could not connect to ${authUrl}. Please check your internet or if the backend is running.`, 
+                icon: 'error' 
+            })
         } finally {
             setGoogleLoading(false)
         }

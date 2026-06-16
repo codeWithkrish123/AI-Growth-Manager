@@ -58,7 +58,7 @@ npm run dev
 1. Go to: https://console.cloud.google.com/apis/credentials
 2. Find OAuth 2.0 Client ID: `25641668694-l55koqoc68svgu8jqb64moagkr0ac96h`
 3. Click to edit
-4. Add this Authorized redirect URI: `http://localhost:3001/google/auth/google/callback`
+4. Add this Authorized redirect URI: `http://localhost:3001/auth/google/callback`
 5. Save
 
 **Without this, Google Sign In will always fail with internal error.**
@@ -118,7 +118,7 @@ start-local.bat
 4. Set all environment variables from `.env.production`
 5. Deploy PostgreSQL database
 6. Deploy Redis instance
-7. Add production redirect URI to Google Cloud Console: `https://your-backend-url.com/google/auth/google/callback`
+7. Add production redirect URI to Google Cloud Console: `https://your-backend-url.com/auth/google/callback`
 8. Deploy
 
 ## Critical Reminder

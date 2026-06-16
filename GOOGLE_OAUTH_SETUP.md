@@ -11,7 +11,7 @@
 5. Select **"Web application"**
 6. Configure:
    - **Name:** AI Growth Manager
-   - **Authorized redirect URIs:** `http://localhost:3001/google/auth/google/callback`
+   - **Authorized redirect URIs:** `http://localhost:3001/auth/google/callback`
 7. Click **Create**
 8. Copy your **Client ID** and **Client Secret**
 
@@ -22,7 +22,7 @@ Add these to your `.env` file:
 ```bash
 GOOGLE_CLIENT_ID=your_google_client_id_here
 GOOGLE_CLIENT_SECRET=your_google_client_secret_here
-GOOGLE_REDIRECT_URI=http://localhost:3001/google/auth/google/callback
+GOOGLE_REDIRECT_URI=http://localhost:3001/auth/google/callback
 ```
 
 ### Step 3: Restart Backend

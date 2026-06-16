@@ -18,7 +18,7 @@ SHOPIFY_API_KEY=your_key
 SHOPIFY_API_SECRET=shpss_your_secret
 GOOGLE_CLIENT_ID=...apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-...
-GOOGLE_REDIRECT_URI=https://your-api.com/google/auth/google/callback
+GOOGLE_REDIRECT_URI=https://your-api.com/auth/google/callback
 
 # Frontend (.env)
 VITE_API_URL=https://your-api.com
@@ -40,7 +40,7 @@ git push production main
 git push
 
 # 4. Verify in Google Cloud Console
-#    Add: https://your-api.com/google/auth/google/callback
+#    Add: https://your-api.com/auth/google/callback
 
 # 5. Verify in Shopify Admin
 #    Update App URL: https://your-api.com/auth/shopify/callback

@@ -23,7 +23,7 @@
 ✅ SHOPIFY_API_SECRET=shpss_your_secret           ← UPDATE THIS
 ✅ GOOGLE_CLIENT_ID=...apps.googleusercontent.com ← UPDATE THIS
 ✅ GOOGLE_CLIENT_SECRET=GOCSPX-...                ← UPDATE THIS
-✅ GOOGLE_REDIRECT_URI=https://your-api.com/google/auth/google/callback
+✅ GOOGLE_REDIRECT_URI=https://your-api.com/auth/google/callback
 ✅ RESEND_API_KEY=re_...                          ← ADD IF EMAIL NEEDED
 ```
 
@@ -38,7 +38,7 @@
 
 ### ✅ Google OAuth Setup
 - [ ] Verify GOOGLE_CLIENT_ID is for your production domain
-- [ ] Verify GOOGLE_REDIRECT_URI: `https://your-backend-api.com/google/auth/google/callback`
+- [ ] Verify GOOGLE_REDIRECT_URI: `https://your-backend-api.com/auth/google/callback`
 - [ ] Add callback URL to Google Cloud Console Authorized redirect URIs
 - [ ] Test: Sign in with Google button redirects to Google login
 
@@ -83,7 +83,7 @@
    → Body: { shop: "mystore.myshopify.com" }
    → Returns: { success: true, data: { authUrl: "https://mystore.myshopify.com/..." } }
 
-✅ GET /google/auth/google/callback (with OAuth code)
+✅ GET /auth/google/callback (with OAuth code)
    → Redirects to: FRONTEND_URL/onboarding?token=...
 
 ✅ GET /auth/shopify/callback (with OAuth code from Shopify)
@@ -205,7 +205,7 @@ git push
 ### 5. Verify OAuth Configurations
 ```bash
 # Google Cloud Console → Authorized redirect URIs
-https://your-backend-api.com/google/auth/google/callback
+https://your-backend-api.com/auth/google/callback
 
 # Shopify Admin → Apps → Your App → Configuration
 App URL: https://your-backend-api.com/auth/shopify/callback
