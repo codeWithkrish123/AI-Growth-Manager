@@ -1,6 +1,7 @@
 import crypto               from 'crypto';
 import pinoHttp             from 'pino-http';
 import rateLimit            from 'express-rate-limit';
+import jwt                  from 'jsonwebtoken';
 import { MerchantModel }    from '../models/index.js';
 import { logger }           from '../utils/logger.js';
 import { UnauthorizedError } from '../utils/error.js';
@@ -11,34 +12,65 @@ import { error }            from '../utils/response.js';
 export const requestLogger = pinoHttp({ logger });
 
 // ─── Auth Middleware ──────────────────────────────────────────────────────────
-// Validates that a merchant exists for the given shopDomain and attaches it to req.
+// Validates JWT token and that a merchant exists for the given shopDomain.
 export async function authMiddleware(req, res, next) {
   try {
     const shopDomain = req.params.shopDomain || req.query.shop;
+    const authHeader = req.headers.authorization;
 
-    logger.info({ params: req.params, query: req.query, shopDomain }, 'authMiddleware received request');
+    logger.debug({ 
+      shopDomain, 
+      hasAuthHeader: !!authHeader,
+      url: req.originalUrl 
+    }, 'Auth middleware processing request');
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.warn({ url: req.originalUrl }, 'Missing or invalid Authorization header');
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const token = authHeader.split(' ')[1];
+    let decoded;
+
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || config.jwt.secret);
+    } catch (jwtErr) {
+      logger.warn({ err: jwtErr.message }, 'JWT verification failed');
+      throw new UnauthorizedError('Invalid or expired token');
+    }
 
     if (!shopDomain) {
       logger.warn('Missing shop domain in request');
       throw new UnauthorizedError('Missing shop domain');
     }
 
-    const merchant = await MerchantModel.findOne({ shopDomain });
+    // Normalized shop domain lookup
+    const cleanShop = shopDomain.replace('.myshopify.com', '').toLowerCase() + '.myshopify.com';
+    const merchant = await MerchantModel.findOne({ shopDomain: cleanShop });
 
     if (!merchant) {
-      logger.warn({ shopDomain }, 'Merchant not found in database');
-      throw new UnauthorizedError('Merchant not found or not installed');
+      logger.warn({ shopDomain: cleanShop }, 'Merchant not found in database');
+      throw new UnauthorizedError('Store not connected. Please connect your Shopify store.');
     }
     
     if (!merchant.isActive) {
-      logger.warn({ shopDomain }, 'Merchant found but not active');
-      throw new UnauthorizedError('Merchant not found or not installed');
+      logger.warn({ shopDomain: cleanShop }, 'Merchant found but not active');
+      throw new UnauthorizedError('Store subscription inactive or uninstalled');
     }
 
+    // Optional: Verify that the token's user has access to this shop
+    // If merchant record has user info or email, we could compare
+    // For now, if they have a valid JWT signed by US, and the shop exists, we allow it
+
     req.merchant = merchant;
+    req.user = decoded;
     next();
   } catch (err) {
-    logger.error({ err: err.message, shopDomain: req.params.shopDomain || req.query.shop }, 'Auth middleware error');
+    logger.error({ 
+      err: err.message, 
+      shopDomain: req.params.shopDomain || req.query.shop,
+      code: err.code 
+    }, 'Auth middleware unauthorized');
     return error(res, err);
   }
 }
