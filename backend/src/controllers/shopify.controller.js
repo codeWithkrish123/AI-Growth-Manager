@@ -27,8 +27,14 @@ export async function initiateShopifyAuth(req, res) {
       return error(res, `Invalid shop domain. Please enter a valid Shopify store name.`, 400);
     }
 
-    // Check if merchant already exists
-    const existingMerchant = await MerchantModel.findOne({ shopDomain });
+    // Check if merchant already exists (non-fatal if DB is unavailable)
+    let existingMerchant = null;
+    try {
+      existingMerchant = await MerchantModel.findOne({ shopDomain });
+    } catch (dbErr) {
+      logger.warn({ shopDomain, err: dbErr.message }, 'DB unavailable during merchant lookup, proceeding with OAuth');
+    }
+
     if (existingMerchant && !force) {
       logger.info({ shopDomain }, 'Merchant already exists, skipping OAuth');
       return success(res, {

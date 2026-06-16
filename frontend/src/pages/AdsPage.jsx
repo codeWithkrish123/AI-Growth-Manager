@@ -51,7 +51,7 @@ export default function AdsPage() {
   const fetchAllData = async () => {
     try {
       setLoading(true)
-      console.log('Fetching all ad data for shop:', shop);
+      console.log('Fetching all ad data');
       const [accRes, campRes, perfRes, sugRes] = await Promise.allSettled([
         dashboardAPI.getAdsAccounts(shop),
         dashboardAPI.getAdsCampaigns(shop),
@@ -653,7 +653,4 @@ export default function AdsPage() {
     </div>
   )
 }
-
-
-
 

@@ -44,7 +44,7 @@ export default function SignInPage() {
         setShopifyLoading(true)
         try {
             const normalizedShop = shopDomain.includes('.myshopify.com') ? shopDomain : `${shopDomain}.myshopify.com`
-            const response = await fetch(`${BACKEND_URL}/auth/shopify/initiate`, {
+            const response = await fetch(`${BACKEND_URL}/api/auth/shopify/initiate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ shop: normalizedShop }),
@@ -69,7 +69,7 @@ export default function SignInPage() {
         setLoading(true)
         try {
             const shop = email.includes('.myshopify.com') ? email : `${email}.myshopify.com`
-            const response = await fetch(`${BACKEND_URL}/auth/shopify/initiate`, {
+            const response = await fetch(`${BACKEND_URL}/api/auth/shopify/initiate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ shop }),

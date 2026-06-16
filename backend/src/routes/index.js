@@ -1,36 +1,24 @@
 import { Router } from 'express';
 import { authMiddleware, shopifyHmac, rateLimiter } from '../middlewares/index.js';
-import { authBegin, authCallback, getOAuthUrl }  from '../controllers/auth.controller.js';
+import { authBegin, authCallback, getOAuthUrl } from '../controllers/auth.controller.js';
 import {
-  initiateShopifyAuth,
-  handleShopifyCallback,
-  getAuthStatus,
-  disconnectShopify,
-  handleEmbeddedAppLaunch
+  initiateShopifyAuth, handleShopifyCallback, getAuthStatus,
+  disconnectShopify, handleEmbeddedAppLaunch,
 } from '../controllers/shopify.controller.js';
 import {
-  getDashboard,
-  triggerAnalysis,
-  getProducts,
+  getDashboard, triggerAnalysis, getProducts, getLatestAnalysis,
 } from '../controllers/dashboard.controller.js';
-import { createProduct, optimizeProduct } from '../controllers/products.controller.js';
 import {
   triggerSync, getSyncStatus,
-  getLatestAnalysis,
-  applyFix, getFixStatus, listFixes,
-  handleWebhook,
-  getHealthHistory,
+  applyFix, getFixStatus, listFixes, previewFixAction,
+  handleWebhook, getHealthHistory,
 } from '../controllers/index.js';
 import {
-  getEmailCampaigns,
-  createEmailCampaign,
-  generateAiEmail,
-  promptComposeEmail,
-  sendEmailCampaign,
-  getEmailAnalytics,
+  getEmailCampaigns, createEmailCampaign,
+  generateAiEmail, promptComposeEmail,
+  sendEmailCampaign, getEmailAnalytics,
 } from '../controllers/email.controller.js';
-import { generateDescriptions, optimizePrices } from '../controllers/ai.controller.js';
-import googleRoutes from './google.routes.js';
+import { generateDescriptions } from '../controllers/ai.controller.js';
 import {
   getAdsAccounts, connectAdAccount, disconnectAdAccount,
   getAdsCampaigns, createAdsCampaign, updateAdsCampaign,
@@ -49,124 +37,114 @@ import {
   addCompetitor, analyzeCompetitors,
   getMetaTags, bulkUpdateMetaTags, aiGenerateMetaTags,
 } from '../controllers/seo.controller.js';
-
+import { createProduct, optimizeProduct } from '../controllers/products.controller.js';
+import googleRoutes from './google.routes.js';
 
 const router = Router();
 
-// ─── Shopify Embedded App Launch (public) - handles app opening from Shopify Admin
+// ── Shopify embedded app launch ────────────────────────────────────────────────
 router.get('/', handleEmbeddedAppLaunch);
 
-// ─── Auth (public — no authMiddleware) ───────────────────────────────
-router.get('/auth/shopify',   authBegin);
-router.get('/auth/callback',  authCallback);
-router.post('/auth/oauth-url', getOAuthUrl);
+// ── Auth (public) ──────────────────────────────────────────────────────────────
+router.get('/auth/shopify',          authBegin);
+router.get('/auth/callback',         authCallback);
+router.post('/auth/oauth-url',       getOAuthUrl);
+router.use('/api/google',            googleRoutes);
 
-// ─── Shopify OAuth (public) - using official SDK routes
-router.post('/auth/shopify/initiate', initiateShopifyAuth);
-router.get('/auth/shopify/callback', handleShopifyCallback);
-router.get('/auth/status', getAuthStatus);
-router.post('/auth/disconnect', disconnectShopify);
+// ── Shopify OAuth (public) ─────────────────────────────────────────────────────
+router.post('/api/auth/shopify/initiate', rateLimiter, initiateShopifyAuth);
+router.get('/api/auth/shopify/callback',  rateLimiter, handleShopifyCallback);
+router.get('/api/auth/status',            rateLimiter, getAuthStatus);
+router.post('/api/auth/disconnect',       rateLimiter, disconnectShopify);
 
-// ─── Google OAuth (public) ───────────────────────────────────────
-router.use('/google', googleRoutes);
-
-// ─── Shopify Webhooks (public — HMAC validated) ───────────────────────────────
+// ── Webhooks (public — HMAC validated) ────────────────────────────────────────
 router.post('/webhooks/shopify', shopifyHmac, handleWebhook);
 
-// ─── Merchant API (protected) ─────────────────────────────────────────────────
-const api = Router();
-api.use(rateLimiter);
-api.use('/:shopDomain', authMiddleware);   // all /api/:shopDomain routes need auth
+// ── Protected merchant routes (/api/:shopDomain/...) ──────────────────────────
+const m = Router({ mergeParams: true });
+m.use(rateLimiter);
+m.use(authMiddleware);
 
 // Dashboard
-api.get('/:shopDomain/dashboard',        getDashboard);
-api.get('/:shopDomain/products',         getProducts);
-api.post('/:shopDomain/products/create', createProduct);
-api.post('/:shopDomain/products/:productId/optimize', optimizeProduct);
+m.get('/dashboard',        getDashboard);
+m.get('/products',         getProducts);
+m.post('/products/create', createProduct);
+m.post('/products/:productId/optimize', optimizeProduct);
 
 // Sync
-api.post('/:shopDomain/sync',            triggerSync);
-api.get('/:shopDomain/sync/:syncJobId',  getSyncStatus);
+m.post('/sync',            triggerSync);
+m.get('/sync/:syncJobId',  getSyncStatus);
 
 // Analysis
-api.post('/:shopDomain/analyze',              triggerAnalysis);
-api.get('/:shopDomain/analysis/latest',       getLatestAnalysis);
-api.get('/:shopDomain/ads/accounts',              getAdsAccounts);
-api.post('/:shopDomain/ads/connect/:platform',    connectAdAccount);
-api.delete('/:shopDomain/ads/accounts/:id',       disconnectAdAccount);
-
-api.get('/:shopDomain/ads/campaigns',             getAdsCampaigns);
-api.post('/:shopDomain/ads/campaigns',            createAdsCampaign);
-api.post('/:shopDomain/ads/campaigns/ai-generate', aiGenerateCampaign);
-api.put('/:shopDomain/ads/campaigns/:id',         updateAdsCampaign);
-api.post('/:shopDomain/ads/campaigns/:id/pause',  pauseAdsCampaign);
-api.post('/:shopDomain/ads/campaigns/:id/resume', resumeAdsCampaign);
-
-api.get('/:shopDomain/ads/performance',           getAdsPerformance);
-api.get('/:shopDomain/ads/performance/:campaignId', getCampaignPerformance);
-api.get('/:shopDomain/ads/performance/trend',     getAdsPerformanceTrend);
-
-api.get('/:shopDomain/ads/ai/suggestions',        getAdsSuggestions);
-api.post('/:shopDomain/ads/ai/suggestions/:id/apply', applyAdsSuggestion);
-api.post('/:shopDomain/ads/ai/budget-optimize',   aiBudgetOptimize);
-api.post('/:shopDomain/ads/ai/audience-suggest',  aiAudienceSuggest);
-api.post('/:shopDomain/ads/ai/creative-generate', aiCreativeGenerate);
-
-// ─── SEO Management ──────────────────────────────────────────────────────
-api.post('/:shopDomain/seo/audit/run',            runSeoAudit);
-api.get('/:shopDomain/seo/audit/latest',          getLatestSeoAudit);
-api.get('/:shopDomain/seo/audit/history',         getSeoAuditHistory);
-api.get('/:shopDomain/seo/issues',                getSeoIssues);
-api.post('/:shopDomain/seo/issues/:id/fix',       fixSeoIssue);
-api.post('/:shopDomain/seo/issues/fix-all',       fixAllSeoIssues);
-
-api.get('/:shopDomain/seo/products',              getProductSeoScores);
-api.post('/:shopDomain/seo/products/:id/optimize', aiOptimizeProduct);
-api.post('/:shopDomain/seo/products/optimize-all', aiOptimizeAllProducts);
-api.get('/:shopDomain/seo/products/:id/preview',  previewSeoChanges);
-
-api.get('/:shopDomain/seo/meta-tags',             getMetaTags);
-api.put('/:shopDomain/seo/meta-tags/bulk',        bulkUpdateMetaTags);
-api.post('/:shopDomain/seo/meta-tags/ai-generate', aiGenerateMetaTags);
-
-api.get('/:shopDomain/seo/keywords',              getSeoKeywords);
-api.post('/:shopDomain/seo/keywords',             addSeoKeyword);
-api.delete('/:shopDomain/seo/keywords/:id',       deleteSeoKeyword);
-api.get('/:shopDomain/seo/keywords/rankings',     getKeywordRankings);
-api.post('/:shopDomain/seo/keywords/suggest',     aiSuggestKeywords);
-
-api.get('/:shopDomain/seo/schema',                getSchemaMarkup);
-api.post('/:shopDomain/seo/schema/generate',      generateSchemaMarkup);
-api.post('/:shopDomain/seo/schema/apply',         applySchemaMarkup);
-
-api.get('/:shopDomain/seo/pagespeed',             getPageSpeedScores);
-api.get('/:shopDomain/seo/pagespeed/history',     getPageSpeedHistory);
-
-api.post('/:shopDomain/seo/competitors',          addCompetitor);
-api.get('/:shopDomain/seo/competitors/analyze',   analyzeCompetitors);
+m.post('/analyze',              triggerAnalysis);
+m.get('/analysis/latest',       getLatestAnalysis);
 
 // Fixes
-api.post('/:shopDomain/fix',                 applyFix);
-api.get('/:shopDomain/fixes',               listFixes);
-api.get('/:shopDomain/fix/:fixActionId',     getFixStatus);
+m.post('/fix',                          applyFix);
+m.get('/fixes',                         listFixes);
+m.get('/fix/:fixActionId',              getFixStatus);
+m.get('/fix/:fixActionId/preview',      previewFixAction);
 
-// Health Score History
-api.get('/:shopDomain/health-history',       getHealthHistory);
+// Health history
+m.get('/health-history',        getHealthHistory);
 
-// AI Description Generator (Phase 5.1)
-api.post('/:shopDomain/ai/generate-descriptions', generateDescriptions);
+// AI features
+m.post('/ai/generate-descriptions', generateDescriptions);
 
-// AI Price Optimizer (Phase 5.3)
-api.post('/:shopDomain/ai/optimize-prices', optimizePrices);
+// Email campaigns
+m.get('/email/campaigns',              getEmailCampaigns);
+m.post('/email/campaigns',             createEmailCampaign);
+m.post('/email/ai-generate',           generateAiEmail);
+m.post('/email/ai-prompt-compose',     promptComposeEmail);
+m.post('/email/campaigns/:id/send',    sendEmailCampaign);
+m.get('/email/analytics',              getEmailAnalytics);
 
-// Email Campaigns
-api.get('/:shopDomain/email/campaigns',              getEmailCampaigns);
-api.post('/:shopDomain/email/campaigns',             createEmailCampaign);
-api.post('/:shopDomain/email/ai-generate',           generateAiEmail);
-api.post('/:shopDomain/email/ai-prompt-compose',     promptComposeEmail);
-api.post('/:shopDomain/email/campaigns/:id/send',    sendEmailCampaign);
-api.get('/:shopDomain/email/analytics',              getEmailAnalytics);
+// Ads
+m.get('/ads/accounts',                 getAdsAccounts);
+m.post('/ads/connect/:platform',       connectAdAccount);
+m.delete('/ads/accounts/:id',          disconnectAdAccount);
+m.get('/ads/campaigns',                getAdsCampaigns);
+m.post('/ads/campaigns',               createAdsCampaign);
+m.post('/ads/campaigns/ai-generate',   aiGenerateCampaign);
+m.put('/ads/campaigns/:id',            updateAdsCampaign);
+m.post('/ads/campaigns/:id/pause',     pauseAdsCampaign);
+m.post('/ads/campaigns/:id/resume',    resumeAdsCampaign);
+m.get('/ads/performance',              getAdsPerformance);
+m.get('/ads/performance/trend',        getAdsPerformanceTrend);
+m.get('/ads/performance/:campaignId',  getCampaignPerformance);
+m.get('/ads/ai/suggestions',           getAdsSuggestions);
+m.post('/ads/ai/suggestions/:id/apply', applyAdsSuggestion);
+m.post('/ads/ai/budget-optimize',      aiBudgetOptimize);
+m.post('/ads/ai/audience-suggest',     aiAudienceSuggest);
+m.post('/ads/ai/creative-generate',    aiCreativeGenerate);
 
-router.use('/api', api);
+// SEO
+m.post('/seo/audit/run',               runSeoAudit);
+m.get('/seo/audit/latest',             getLatestSeoAudit);
+m.get('/seo/audit/history',            getSeoAuditHistory);
+m.get('/seo/issues',                   getSeoIssues);
+m.post('/seo/issues/:id/fix',          fixSeoIssue);
+m.post('/seo/issues/fix-all',          fixAllSeoIssues);
+m.get('/seo/products',                 getProductSeoScores);
+m.post('/seo/products/:id/optimize',   aiOptimizeProduct);
+m.post('/seo/products/optimize-all',   aiOptimizeAllProducts);
+m.get('/seo/products/:id/preview',     previewSeoChanges);
+m.get('/seo/meta-tags',                getMetaTags);
+m.put('/seo/meta-tags/bulk',           bulkUpdateMetaTags);
+m.post('/seo/meta-tags/ai-generate',   aiGenerateMetaTags);
+m.get('/seo/keywords',                 getSeoKeywords);
+m.post('/seo/keywords',                addSeoKeyword);
+m.delete('/seo/keywords/:id',          deleteSeoKeyword);
+m.get('/seo/keywords/rankings',        getKeywordRankings);
+m.post('/seo/keywords/suggest',        aiSuggestKeywords);
+m.get('/seo/schema',                   getSchemaMarkup);
+m.post('/seo/schema/generate',         generateSchemaMarkup);
+m.post('/seo/schema/apply',            applySchemaMarkup);
+m.get('/seo/pagespeed',                getPageSpeedScores);
+m.get('/seo/pagespeed/history',        getPageSpeedHistory);
+m.post('/seo/competitors',             addCompetitor);
+m.get('/seo/competitors/analyze',      analyzeCompetitors);
+
+router.use('/api/:shopDomain', m);
 
 export default router;

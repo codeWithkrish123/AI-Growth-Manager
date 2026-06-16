@@ -3,9 +3,9 @@ import axios from 'axios';
 // Hardcode production URL for Vercel deployment
 const baseUrl = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
   ? 'https://ai-growth-backend-aokd.onrender.com'
-  : (import.meta.env.VITE_API_URL || 'http://localhost:3001');
+  : (import.meta.env.VITE_API_URL || '');
 
-const API_BASE_URL = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
+const API_BASE_URL = baseUrl ? (baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`) : '/api';
 
 export const BACKEND_URL = baseUrl;
 

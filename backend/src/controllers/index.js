@@ -61,6 +61,7 @@ export async function triggerSync(req, res) {
     // Use merchant's stored access token, fall back to admin token
     const accessToken = merchant.getAccessToken();
     if (!accessToken) {
+      logger.error({ shopDomain }, 'Access token not found during sync');
       return error(res, 'Access token not found. Please reconnect your store.', 401);
     }
 
@@ -69,39 +70,34 @@ export async function triggerSync(req, res) {
     // Fetch real data from Shopify with individual error handling
     let products = [], orders = [], storeInfo = {}, checkouts = [], customers = [];
 
+    // Helper to log errors for specific service calls
+    const wrapServiceCall = async (fn, name) => {
+        try {
+            return await fn();
+        } catch (err) {
+            logger.error({ shopDomain, error: err.message, service: name }, `Failed to fetch ${name}`);
+            throw err; // Rethrow to handle or at least know it failed
+        }
+    };
+
     try {
-      products = await fetchProducts(shopDomain, accessToken).catch(err => {
-        logger.warn({ shopDomain, error: err.message }, 'Failed to fetch products');
-        return [];
-      });
+      products = await wrapServiceCall(() => fetchProducts(shopDomain, accessToken), 'products');
     } catch (e) { products = []; }
 
     try {
-      orders = await fetchOrders(shopDomain, accessToken, 30).catch(err => {
-        logger.warn({ shopDomain, error: err.message }, 'Failed to fetch orders');
-        return [];
-      });
+      orders = await wrapServiceCall(() => fetchOrders(shopDomain, accessToken, 30), 'orders');
     } catch (e) { orders = []; }
 
     try {
-      storeInfo = await fetchStoreInfo(shopDomain, accessToken).catch(err => {
-        logger.warn({ shopDomain, error: err.message }, 'Failed to fetch store info');
-        return {};
-      });
+      storeInfo = await wrapServiceCall(() => fetchStoreInfo(shopDomain, accessToken), 'storeInfo');
     } catch (e) { storeInfo = {}; }
 
     try {
-      checkouts = await fetchAbandonedCheckouts(shopDomain, accessToken, 30).catch(err => {
-        logger.warn({ shopDomain, error: err.message }, 'Failed to fetch checkouts');
-        return [];
-      });
+      checkouts = await wrapServiceCall(() => fetchAbandonedCheckouts(shopDomain, accessToken, 30), 'checkouts');
     } catch (e) { checkouts = []; }
 
     try {
-      customers = await fetchCustomers(shopDomain, accessToken).catch(err => {
-        logger.warn({ shopDomain, error: err.message }, 'Failed to fetch customers');
-        return [];
-      });
+      customers = await wrapServiceCall(() => fetchCustomers(shopDomain, accessToken), 'customers');
     } catch (e) { customers = []; }
 
     // Calculate metrics

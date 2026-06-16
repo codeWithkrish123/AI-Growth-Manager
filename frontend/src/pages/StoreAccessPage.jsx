@@ -18,39 +18,32 @@ export default function StoreAccessPage() {
     const handleAuthorize = async () => {
         setIsVerifying(true)
         try {
-            const response = await fetch(`${BACKEND_URL}/auth/shopify/initiate`, {
+            // Use relative URL so Vite proxy forwards to backend (avoids cross-origin issues)
+            const url = BACKEND_URL ? `${BACKEND_URL}/api/auth/shopify/initiate` : '/api/auth/shopify/initiate'
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ shop })
             })
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`)
-            }
-            
+
             const data = await response.json()
-            console.log('Authorization response:', data)
-            
-            // Backend returns { success: true, data: { authUrl, shop, ... } }
-            if (!data.success) {
-                throw new Error(data.error || 'Authorization failed')
+
+            if (!response.ok || !data.success) {
+                throw new Error(data?.error?.message || data?.error || `HTTP ${response.status}`)
             }
 
-            // Navigate to dashboard directly if already authenticated
-            if (data.data?.shop) {
-                navigate(`/dashboard/${data.data.shop}`)
+            if (data.data?.shopDomain || data.data?.shop) {
+                navigate(`/dashboard/${data.data.shopDomain || data.data.shop}`)
             } else if (data.data?.authUrl) {
-                // Redirect to Shopify OAuth if needed
                 window.location.href = data.data.authUrl
             } else {
-                // Fallback: use stored shop domain
                 navigate(`/dashboard/${shop}`)
             }
         } catch (e) {
             console.error('Authorization error:', e)
             Swal.fire({
                 title: 'Access Error',
-                text: 'Failed to connect to store. Please try again or contact support.',
+                text: e.message || 'Failed to connect to store.',
                 icon: 'error',
                 confirmButtonColor: '#1a73e8'
             })

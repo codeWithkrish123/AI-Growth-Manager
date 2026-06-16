@@ -1,5 +1,5 @@
 import { query } from '../../config/database.js';
-import { sendCampaignEmail, sendAbandonedCartEmail } from './email.service.js';
+import { sendCampaignEmail } from './email.service.js';
 import { logger } from '../../utils/logger.js';
 
 // ─── Campaign CRUD ─────────────────────────────────────────────────────────────
@@ -52,6 +52,83 @@ export async function getCampaignAnalytics(merchantId) {
   return result.rows;
 }
 
+// ─── Template fallback ────────────────────────────────────────────────────────
+
+function generateTemplateEmail(shopName, segment, goal, topProducts) {
+  const productMentions = topProducts.slice(0, 2).map(p => p.title).join(' and ');
+
+  const templates = {
+    increase_repeat_orders: {
+      subject: `We miss you at ${shopName} 💙`,
+      body: `<p>Hi there,</p>
+<p>It's been a while since your last visit to <strong>${shopName}</strong>, and we wanted to reach out personally.</p>
+<p>We've got some exciting new arrivals you might love${productMentions ? `, including ${productMentions}` : ''}.</p>
+<p>As a valued customer, use code <strong>COMEBACK15</strong> for 15% off your next order.</p>
+<p style="text-align:center; margin: 24px 0;">
+  <a href="#" style="background: #3b82f6; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">Shop Now →</a>
+</p>
+<p>Thank you for being part of our community.</p>`,
+    },
+    new_arrivals: {
+      subject: `New arrivals just dropped at ${shopName} 🎉`,
+      body: `<p>Hi there,</p>
+<p>We're excited to share our latest arrivals at <strong>${shopName}</strong>!</p>
+<p>${productMentions ? `Check out our newest additions including ${productMentions}.` : 'We have exciting new products waiting for you.'}</p>
+<p style="text-align:center; margin: 24px 0;">
+  <a href="#" style="background: #3b82f6; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">View New Arrivals →</a>
+</p>`,
+    },
+    default: {
+      subject: `Special offer from ${shopName} for you`,
+      body: `<p>Hi there,</p>
+<p>We have something special for you at <strong>${shopName}</strong>.</p>
+<p>${productMentions ? `Discover our featured products: ${productMentions}.` : 'Check out our latest collection.'}</p>
+<p style="text-align:center; margin: 24px 0;">
+  <a href="#" style="background: #3b82f6; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">Shop Now →</a>
+</p>`,
+    },
+  };
+
+  return templates[goal] || templates.default;
+}
+
+// ─── AI Email Generation ───────────────────────────────────────────────────────
+
+export async function generateEmailWithAI(shopName, segment, goal, topProducts) {
+  if (!process.env.OPENAI_API_KEY) {
+    return generateTemplateEmail(shopName, segment, goal, topProducts);
+  }
+
+  try {
+    const { default: OpenAI } = await import('openai');
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    const productList = topProducts.slice(0, 3).map(p => p.title).join(', ');
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert e-commerce email copywriter. Write concise, conversion-focused emails. Return JSON with: subject (string), body_html (HTML string for email body only, no full HTML document).',
+        },
+        {
+          role: 'user',
+          content: `Write a ${goal} email for Shopify store "${shopName}".\nTarget segment: ${segment}\nTop products: ${productList}\nKeep it personal, short (3-4 paragraphs), and include a clear CTA.\nReturn JSON only.`,
+        },
+      ],
+      response_format: { type: 'json_object' },
+      max_tokens: 800,
+    });
+
+    const parsed = JSON.parse(completion.choices[0].message.content);
+    return { subject: parsed.subject, body: parsed.body_html };
+  } catch (err) {
+    logger.error({ err }, 'AI email generation failed, using template');
+    return generateTemplateEmail(shopName, segment, goal, topProducts);
+  }
+}
+
 // ─── AI Prompt-to-Email ────────────────────────────────────────────────────────
 
 export async function generateEmailFromPrompt(shopName, prompt) {
@@ -95,93 +172,12 @@ export async function generateEmailFromPrompt(shopName, prompt) {
   };
 }
 
-// ─── AI Email Generation ───────────────────────────────────────────────────────
-
-export async function generateEmailWithAI(shopName, segment, goal, topProducts) {
-  // Use OpenAI if available, otherwise return a template
-  if (!process.env.OPENAI_API_KEY) {
-    return generateTemplateEmail(shopName, segment, goal, topProducts);
-  }
-
-  try {
-    const { default: OpenAI } = await import('openai');
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-    const productList = topProducts.slice(0, 3).map(p => p.title).join(', ');
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert e-commerce email copywriter. Write concise, conversion-focused emails. Return JSON with: subject (string), body_html (HTML string for email body only, no full HTML document).'
-        },
-        {
-          role: 'user',
-          content: `Write a ${goal} email for Shopify store "${shopName}".
-Target segment: ${segment}
-Top products: ${productList}
-Keep it personal, short (3-4 paragraphs), and include a clear CTA.
-Return JSON only.`
-        }
-      ],
-      response_format: { type: 'json_object' },
-      max_tokens: 800,
-    });
-
-    const parsed = JSON.parse(completion.choices[0].message.content);
-    return { subject: parsed.subject, body: parsed.body_html };
-  } catch (err) {
-    logger.error({ err }, 'AI email generation failed, using template');
-    return generateTemplateEmail(shopName, segment, goal, topProducts);
-  }
-}
-
-function generateTemplateEmail(shopName, segment, goal, topProducts) {
-  const productMentions = topProducts.slice(0, 2).map(p => p.title).join(' and ');
-
-  const templates = {
-    increase_repeat_orders: {
-      subject: `We miss you at ${shopName} 💙`,
-      body: `<p>Hi there,</p>
-<p>It's been a while since your last visit to <strong>${shopName}</strong>, and we wanted to reach out personally.</p>
-<p>We've got some exciting new arrivals you might love${productMentions ? `, including ${productMentions}` : ''}.</p>
-<p>As a valued customer, use code <strong>COMEBACK15</strong> for 15% off your next order.</p>
-<p style="text-align:center; margin: 24px 0;">
-  <a href="#" style="background: #3b82f6; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">Shop Now →</a>
-</p>
-<p>Thank you for being part of our community.</p>`
-    },
-    new_arrivals: {
-      subject: `New arrivals just dropped at ${shopName} 🎉`,
-      body: `<p>Hi there,</p>
-<p>We're excited to share our latest arrivals at <strong>${shopName}</strong>!</p>
-<p>${productMentions ? `Check out our newest additions including ${productMentions}.` : 'We have exciting new products waiting for you.'}</p>
-<p style="text-align:center; margin: 24px 0;">
-  <a href="#" style="background: #3b82f6; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">View New Arrivals →</a>
-</p>`
-    },
-    default: {
-      subject: `Special offer from ${shopName} for you`,
-      body: `<p>Hi there,</p>
-<p>We have something special for you at <strong>${shopName}</strong>.</p>
-<p>${productMentions ? `Discover our featured products: ${productMentions}.` : 'Check out our latest collection.'}</p>
-<p style="text-align:center; margin: 24px 0;">
-  <a href="#" style="background: #3b82f6; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">Shop Now →</a>
-</p>`
-    }
-  };
-
-  return templates[goal] || templates.default;
-}
-
 // ─── Send Campaign ─────────────────────────────────────────────────────────────
 
 export async function sendCampaign(campaignId, merchantId, customers, shopName, shopDomain) {
   const campaign = await getCampaign(campaignId, merchantId);
   if (!campaign) throw new Error('Campaign not found');
 
-  // Update status to sending
   await query(
     `UPDATE email_campaigns SET status = 'sending', updated_at = NOW() WHERE id = $1`,
     [campaignId]
@@ -203,7 +199,6 @@ export async function sendCampaign(campaignId, merchantId, customers, shopName, 
         shopDomain,
       });
 
-      // Log the send
       await query(
         `INSERT INTO email_logs (campaign_id, merchant_id, customer_email, customer_name, status, resend_id)
          VALUES ($1, $2, $3, $4, 'sent', $5)`,
@@ -217,7 +212,6 @@ export async function sendCampaign(campaignId, merchantId, customers, shopName, 
     }
   }
 
-  // Update campaign stats
   await query(
     `UPDATE email_campaigns 
      SET status = 'sent', total_sent = $2, sent_at = NOW(), updated_at = NOW()

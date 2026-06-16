@@ -225,7 +225,9 @@ export class StoreSnapshot {
 export const StoreSnapshotModel = {
   findOne: async (query) => {
     if (query.merchantId) {
-      return await StoreSnapshot.findByMerchantId(query.merchantId);
+      const opts = { limit: 1 };
+      if (query.sort) opts.sort = query.sort;
+      return await StoreSnapshot.findByMerchantId(query.merchantId, opts);
     }
     if (query._id) {
       return await StoreSnapshot.findById(query._id);

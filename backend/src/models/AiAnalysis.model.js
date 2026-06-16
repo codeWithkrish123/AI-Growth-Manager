@@ -203,14 +203,10 @@ export class AiAnalysis {
 export const AiAnalysisModel = {
   findOne: async (query) => {
     if (query.merchantId) {
-      if (query.status) {
-        const results = await AiAnalysis.findByMerchantId(query.merchantId, { 
-          limit: 1, 
-          status: query.status 
-        });
-        return results;
-      }
-      return await AiAnalysis.findByMerchantId(query.merchantId, { limit: 1 });
+      const opts = { limit: 1 };
+      if (query.status) opts.status = query.status;
+      if (query.sort)   opts.sort   = query.sort;
+      return await AiAnalysis.findByMerchantId(query.merchantId, opts);
     }
     if (query._id) {
       return await AiAnalysis.findById(query._id);

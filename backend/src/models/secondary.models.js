@@ -320,7 +320,13 @@ export class WebhookEvent {
       payload,
       shopifyWebhookId,
       processed = false,
+      // receivedAt and status are accepted but mapped to processed column
+      receivedAt,
+      status,
     } = data;
+
+    // Map status field: 'received' or any non-processed status → processed=false
+    const isProcessed = status === 'processed' ? true : processed;
 
     const sql = `
       INSERT INTO webhook_events (
@@ -335,7 +341,7 @@ export class WebhookEvent {
       topic,
       JSON.stringify(payload),
       shopifyWebhookId,
-      processed,
+      isProcessed,
     ]);
 
     return this.mapRowToWebhookEvent(result.rows[0]);

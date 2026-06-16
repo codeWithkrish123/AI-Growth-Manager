@@ -16,19 +16,29 @@ export async function authMiddleware(req, res, next) {
   try {
     const shopDomain = req.params.shopDomain || req.query.shop;
 
+    logger.info({ params: req.params, query: req.query, shopDomain }, 'authMiddleware received request');
+
     if (!shopDomain) {
+      logger.warn('Missing shop domain in request');
       throw new UnauthorizedError('Missing shop domain');
     }
 
     const merchant = await MerchantModel.findOne({ shopDomain });
 
-    if (!merchant || !merchant.isActive) {
+    if (!merchant) {
+      logger.warn({ shopDomain }, 'Merchant not found in database');
+      throw new UnauthorizedError('Merchant not found or not installed');
+    }
+    
+    if (!merchant.isActive) {
+      logger.warn({ shopDomain }, 'Merchant found but not active');
       throw new UnauthorizedError('Merchant not found or not installed');
     }
 
     req.merchant = merchant;
     next();
   } catch (err) {
+    logger.error({ err: err.message, shopDomain: req.params.shopDomain || req.query.shop }, 'Auth middleware error');
     return error(res, err);
   }
 }
