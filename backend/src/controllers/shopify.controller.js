@@ -46,14 +46,10 @@ export async function initiateShopifyAuth(req, res) {
       });
     }
 
-    // If force is true, mark as inactive to allow re-authentication
+    // If force is true, we still proceed to OAuth to refresh the Shopify access token.
+    // Don't deactivate the merchant — just let the callback overwrite with new credentials.
     if (existingMerchant && force) {
-      logger.info({ shopDomain }, 'Force re-auth requested');
-      try {
-        await MerchantModel.findOneAndUpdate({ shopDomain }, { isActive: false });
-      } catch (updateErr) {
-        logger.warn({ shopDomain, err: updateErr.message }, 'Failed to mark merchant as inactive');
-      }
+      logger.info({ shopDomain }, 'Force re-auth requested, proceeding to Shopify OAuth');
     }
 
     // Validate config is set
@@ -66,8 +62,13 @@ export async function initiateShopifyAuth(req, res) {
     // The merchantId is embedded in the state param so the Shopify callback can link the account.
     const authHeader = req.headers.authorization;
     let stateData = { nonce: crypto.randomBytes(16).toString('hex') };
-    
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+
+    // When force re-auth on an existing Shopify merchant, use that merchant's ID directly.
+    // This ensures the callback updates the right row, not a Google placeholder row.
+    if (existingMerchant && force) {
+      stateData.merchantId = existingMerchant.id;
+      logger.info({ merchantId: existingMerchant.id }, 'Force re-auth: using existing merchant ID for linking');
+    } else if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
         const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, config.jwt.secret);

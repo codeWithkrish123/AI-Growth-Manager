@@ -19,7 +19,6 @@ export default function StoreAccessPage() {
         setIsVerifying(true)
         try {
             const token = localStorage.getItem('token')
-            // Use relative URL so Vite proxy forwards to backend (avoids cross-origin issues)
             const url = BACKEND_URL ? `${BACKEND_URL}/api/auth/shopify/initiate` : '/api/auth/shopify/initiate'
             const response = await fetch(url, {
                 method: 'POST',
@@ -27,7 +26,11 @@ export default function StoreAccessPage() {
                     'Content-Type': 'application/json',
                     'Authorization': token ? `Bearer ${token}` : ''
                 },
-                body: JSON.stringify({ shop })
+                // Always force re-auth so we get a fresh Shopify OAuth and a real token.
+                // Without force:true, the backend shortcuts to "already connected" and
+                // returns no authUrl — leaving the user with the Google-only token that
+                // the auth middleware rejects for data endpoints.
+                body: JSON.stringify({ shop, force: true })
             })
 
             const data = await response.json()
@@ -36,18 +39,14 @@ export default function StoreAccessPage() {
                 throw new Error(data?.error?.message || data?.error || `HTTP ${response.status}`)
             }
 
-            // Never overwrite the existing session token from the initiate response.
-            // The real token (with the actual merchantId) comes back only after the
-            // Shopify OAuth callback completes and the backend redirects to /dashboard.
-
-            if (data.data?.shopDomain || data.data?.shop) {
-                // Store already connected — mark as connected and go to dashboard
-                localStorage.setItem('shopifyConnected', 'true')
-                navigate(`/dashboard/${data.data.shopDomain || data.data.shop}`)
-            } else if (data.data?.authUrl) {
+            // Redirect to Shopify OAuth. The callback will issue a real token with the
+            // correct merchantId and redirect to /dashboard/:shop?token=...
+            if (data.data?.authUrl) {
                 window.location.href = data.data.authUrl
             } else {
-                navigate(`/dashboard/${shop}`)
+                // Fallback: backend said store is connected, go to dashboard
+                localStorage.setItem('shopifyConnected', 'true')
+                navigate(`/dashboard/${data.data?.shopDomain || data.data?.shop || shop}`)
             }
         } catch (e) {
             console.error('Authorization error:', e)
