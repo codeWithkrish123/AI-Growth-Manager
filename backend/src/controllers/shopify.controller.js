@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import { success, error } from '../utils/response.js';
 import { logger } from '../utils/logger.js';
 import { MerchantModel, Merchant } from '../models/index.js';
@@ -90,7 +91,6 @@ export async function initiateShopifyAuth(req, res) {
       `state=${state}`;
 
     // Generate JWT token for the session (to keep it alive during OAuth)
-    const jwt = (await import('jsonwebtoken')).default;
     const token = jwt.sign(
       { merchantId: existingMerchant ? existingMerchant.id : 'temp' },
       config.jwt.secret,
