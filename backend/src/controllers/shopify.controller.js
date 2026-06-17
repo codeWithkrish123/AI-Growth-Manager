@@ -5,6 +5,7 @@ import { logger } from '../utils/logger.js';
 import { MerchantModel, Merchant } from '../models/index.js';
 import { encrypt } from '../utils/encryption.js';
 import { config } from '../config/index.js';
+import { query as dbQuery } from '../config/database.js';
 
 /**
  * Initiate Shopify OAuth flow
@@ -61,7 +62,8 @@ export async function initiateShopifyAuth(req, res) {
       return error(res, 'Server configuration error. Please contact support.', 500);
     }
 
-    // Build state parameter with optional merchant ID for account linking
+    // Extract merchantId from the incoming Bearer token (if any) for account linking state.
+    // The merchantId is embedded in the state param so the Shopify callback can link the account.
     const authHeader = req.headers.authorization;
     let stateData = { nonce: crypto.randomBytes(16).toString('hex') };
     
@@ -69,7 +71,7 @@ export async function initiateShopifyAuth(req, res) {
       try {
         const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, config.jwt.secret);
-        if (decoded.merchantId) {
+        if (decoded.merchantId && decoded.merchantId !== 'temp') {
           stateData.merchantId = decoded.merchantId;
           logger.info({ merchantId: decoded.merchantId }, 'Linking Shopify store to existing merchant record');
         }
@@ -89,34 +91,15 @@ export async function initiateShopifyAuth(req, res) {
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `state=${state}`;
 
-    // Generate JWT token for the session (to keep it alive during OAuth)
-    // Extract merchantId from request if user is authenticated via Bearer token
-    let merchantId = 'temp'; 
-    if (req.user && req.user.merchantId) {
-        merchantId = req.user.merchantId;
-    } else if (req.user && req.user.email) {
-        // Fallback: Lookup by email if merchantId is missing but email is present
-        const merchantByEmail = await MerchantModel.findOne({ email: req.user.email });
-        if (merchantByEmail) {
-            merchantId = merchantByEmail.id;
-        }
-    } else if (existingMerchant) {
-        merchantId = existingMerchant.id;
-    }
-    
-    const token = jwt.sign(
-      { merchantId: merchantId },
-      config.jwt.secret,
-      { expiresIn: '1h' }
-    );
-
     logger.info({ shopDomain }, 'Initiating Shopify OAuth');
 
+    // Never mint a new token here — that would overwrite the frontend's real session token.
+    // The frontend redirects the user to authUrl; the real final token is issued by the
+    // Shopify callback after the store is connected.
     return success(res, {
       authUrl,
       shopDomain,
       state,
-      token // Return the current token to the frontend
     });
 
   } catch (err) {
@@ -192,23 +175,71 @@ export async function handleShopifyCallback(req, res) {
     let merchant;
     try {
       if (merchantId) {
-        // Account linking: update the existing merchant record
-        // Force update shopDomain to the real Shopify domain
-        merchant = await MerchantModel.findOneAndUpdate(
-          { _id: merchantId },
-          {
-            shopDomain,
-            accessToken: tokenResponse.access_token,
-            scope: tokenResponse.scope,
-            shopInfo: {
-              ...shopInfo,
-              connectedAt: new Date().toISOString(),
-              authProvider: 'shopify_linked'
-            },
-            isActive: true
+        // Account linking: the Google OAuth user now connecting their Shopify store.
+        // We need to update shopDomain (which was a placeholder) AND set the access token.
+        // updateById doesn't support shopDomain changes, so we do a direct SQL update.
+        const encryptedToken = encrypt(tokenResponse.access_token);
+        
+        // First check if the target shopDomain already exists as a different merchant row
+        const existingByDomain = await MerchantModel.findOne({ shopDomain });
+        if (existingByDomain && existingByDomain.id !== merchantId) {
+          // The shop is already linked to a different account — merge by re-using that record
+          // and deleting the placeholder Google-auth row
+          const mergeResult = await dbQuery(
+            `UPDATE merchants
+             SET access_token_enc  = $1,
+                 scope             = $2,
+                 is_active         = true,
+                 shop_info         = $3,
+                 updated_at        = NOW()
+             WHERE id = $4
+             RETURNING *`,
+            [
+              encryptedToken,
+              tokenResponse.scope,
+              JSON.stringify({
+                ...shopInfo,
+                connectedAt: new Date().toISOString(),
+                authProvider: 'shopify_linked',
+              }),
+              existingByDomain.id,
+            ]
+          );
+          // Delete the placeholder row that was created during Google OAuth
+          await dbQuery('DELETE FROM merchants WHERE id = $1 AND shop_domain LIKE $2', [merchantId, 'pending-%']);
+          if (mergeResult.rows.length > 0) {
+            merchant = Merchant.mapRowToMerchant(mergeResult.rows[0]);
+            logger.info({ shopDomain, merchantId: merchant.id }, 'Merged Google auth with existing Shopify merchant');
           }
-        );
-        logger.info({ shopDomain, merchantId }, 'Merchant record linked and domain updated');
+        } else {
+          // Safe to update the placeholder row with the real shop domain
+          const linkResult = await dbQuery(
+            `UPDATE merchants
+             SET shop_domain       = $1,
+                 access_token_enc  = $2,
+                 scope             = $3,
+                 is_active         = true,
+                 shop_info         = $4,
+                 updated_at        = NOW()
+             WHERE id = $5
+             RETURNING *`,
+            [
+              shopDomain,
+              encryptedToken,
+              tokenResponse.scope,
+              JSON.stringify({
+                ...shopInfo,
+                connectedAt: new Date().toISOString(),
+                authProvider: 'shopify_linked',
+              }),
+              merchantId,
+            ]
+          );
+          if (linkResult.rows.length > 0) {
+            merchant = Merchant.mapRowToMerchant(linkResult.rows[0]);
+            logger.info({ shopDomain, merchantId }, 'Merchant record linked and domain updated');
+          }
+        }
       }
 
       if (!merchant) {

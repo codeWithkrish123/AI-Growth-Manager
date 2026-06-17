@@ -37,13 +37,13 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       console.warn('⚠️ Unauthorized request detected:', error.config.url);
       
-      // If it's a 401, it could be a race condition or an invalid token.
-      // We only clear the token and redirect if it's NOT a shop-specific data fetch
-      // that might have failed because the merchant record is still being created/updated.
+      // Only wipe the session when an actual auth endpoint rejects the token.
+      // Data endpoints (dashboard, fixes, health-history, etc.) can return 401
+      // temporarily while the Shopify OAuth callback is still in flight — don't
+      // log out for those, just let the caller handle the rejection.
       const isAuthEndpoint = error.config.url.includes('/auth/');
-      const isDashboardEndpoint = error.config.url.endsWith('/dashboard');
       
-      if (isAuthEndpoint || isDashboardEndpoint) {
+      if (isAuthEndpoint) {
         console.error('❌ Critical auth failure. Wiping session.');
         localStorage.removeItem('authToken');
         localStorage.removeItem('token');

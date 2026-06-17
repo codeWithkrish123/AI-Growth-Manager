@@ -36,11 +36,9 @@ export default function StoreAccessPage() {
                 throw new Error(data?.error?.message || data?.error || `HTTP ${response.status}`)
             }
 
-            // If a new token is provided during Shopify Auth initiation, update it
-            if (data.data?.token) {
-                console.log('🎟️ Updating session token after Shopify authorization')
-                localStorage.setItem('token', data.data.token)
-            }
+            // Never overwrite the existing session token from the initiate response.
+            // The real token (with the actual merchantId) comes back only after the
+            // Shopify OAuth callback completes and the backend redirects to /dashboard.
 
             if (data.data?.shopDomain || data.data?.shop) {
                 navigate(`/dashboard/${data.data.shopDomain || data.data.shop}`)
