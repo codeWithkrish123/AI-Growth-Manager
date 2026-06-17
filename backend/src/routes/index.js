@@ -62,6 +62,7 @@ router.post('/api/auth/disconnect',       rateLimiter, disconnectShopify);
 router.get('/api/auth/fix-inactive-merchant', async (req, res) => {
   try {
     const { query: dbQuery } = await import('../config/database.js');
+    const { encrypt } = await import('../utils/encryption.js');
     
     const REAL_SHOP = 'ai-product-optimizer.myshopify.com';
     const GOOGLE_MERCHANT_ID = '7fe4aa1e-0d4c-46ef-8470-5235473dd6c5';
@@ -88,20 +89,36 @@ router.get('/api/auth/fix-inactive-merchant', async (req, res) => {
       );
       // Delete the now-duplicate real row so there's no unique constraint conflict
       await dbQuery(`DELETE FROM merchants WHERE id = $1`, [real.id]);
-      res.json({ status: 'merged', shopDomain: REAL_SHOP, keptId: GOOGLE_MERCHANT_ID, deletedId: real.id });
-    } else {
-      // No real row — just update the domain directly on the Google placeholder
-      const result = await dbQuery(
-        `UPDATE merchants
-         SET shop_domain = $1,
-             is_active   = true,
-             updated_at  = NOW()
-         WHERE id = $2
-         RETURNING id, shop_domain, is_active`,
-        [REAL_SHOP, GOOGLE_MERCHANT_ID]
-      );
-      res.json({ status: 'domain_updated', merchants: result.rows });
+      return res.json({ status: 'merged', shopDomain: REAL_SHOP, keptId: GOOGLE_MERCHANT_ID, deletedId: real.id });
     }
+
+    // No real row — check if ADMIN_API_ACCESS_TOKEN env var is available as fallback
+    const adminToken = process.env.ADMIN_API_ACCESS_TOKEN;
+    if (adminToken) {
+      const encryptedToken = encrypt(adminToken);
+      await dbQuery(
+        `UPDATE merchants
+         SET shop_domain      = $1,
+             access_token_enc = $2,
+             is_active        = true,
+             updated_at       = NOW()
+         WHERE id = $3`,
+        [REAL_SHOP, encryptedToken, GOOGLE_MERCHANT_ID]
+      );
+      return res.json({ status: 'activated_with_admin_token', shopDomain: REAL_SHOP, merchantId: GOOGLE_MERCHANT_ID });
+    }
+
+    // No token available at all — just update domain and flag
+    const result = await dbQuery(
+      `UPDATE merchants
+       SET shop_domain = $1,
+           is_active   = true,
+           updated_at  = NOW()
+       WHERE id = $2
+       RETURNING id, shop_domain, is_active, (access_token_enc != '' AND access_token_enc IS NOT NULL) as has_token`,
+      [REAL_SHOP, GOOGLE_MERCHANT_ID]
+    );
+    return res.json({ status: 'domain_updated_no_token', merchants: result.rows, note: 'No Shopify access token available. Set ADMIN_API_ACCESS_TOKEN in Render env vars or complete Shopify OAuth.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

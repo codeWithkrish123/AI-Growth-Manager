@@ -84,7 +84,7 @@ export async function initiateShopifyAuth(req, res) {
     const state = Buffer.from(JSON.stringify(stateData)).toString('base64');
     
     // Build Shopify OAuth URL
-    const redirectUri = `${config.shopify.appUrl}/auth/shopify/callback`;
+    const redirectUri = `${config.shopify.appUrl}/api/auth/shopify/callback`;
     const scopes = config.shopify.scopes?.split(',') || [];
     const authUrl = `https://${shopDomain}/admin/oauth/authorize?` +
       `client_id=${config.shopify.apiKey}&` +
@@ -540,7 +540,7 @@ export async function handleEmbeddedAppLaunch(req, res) {
       if (!merchant) {
         logger.info({ shopDomain }, 'Initiating OAuth flow');
         const nonce = crypto.randomBytes(16).toString('hex');
-        const redirectUri = `${config.shopify.appUrl}/auth/shopify/callback`;
+        const redirectUri = `${config.shopify.appUrl}/api/auth/shopify/callback`;
         const scopes = config.shopify.scopes.split(',');
         const authUrl = `https://${shopDomain}/admin/oauth/authorize?` +
           `client_id=${config.shopify.apiKey}&` +
