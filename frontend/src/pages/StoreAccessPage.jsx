@@ -41,6 +41,8 @@ export default function StoreAccessPage() {
             // Shopify OAuth callback completes and the backend redirects to /dashboard.
 
             if (data.data?.shopDomain || data.data?.shop) {
+                // Store already connected — mark as connected and go to dashboard
+                localStorage.setItem('shopifyConnected', 'true')
                 navigate(`/dashboard/${data.data.shopDomain || data.data.shop}`)
             } else if (data.data?.authUrl) {
                 window.location.href = data.data.authUrl

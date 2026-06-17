@@ -135,8 +135,10 @@ export default function DashboardPage() {
     if (urlToken) {
       console.log('🎟️ New session token received from URL')
       localStorage.setItem('token', urlToken)
-      // We must ensure the next fetch uses this token
-      // Axios request interceptor will read it from localStorage
+      // Mark Shopify as connected — this token comes from the Shopify OAuth callback
+      // and is the only token that has a real, active merchant record in the DB.
+      localStorage.setItem('shopifyConnected', 'true')
+      localStorage.setItem('currentShop', shop)
     }
 
     const currentToken = urlToken || localStorage.getItem('token')

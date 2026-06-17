@@ -30,14 +30,17 @@ export default function OnboardingPage() {
         if (token) {
             console.log('🎟️ New token received from OAuth')
             localStorage.setItem('token', token)
-            // If we have a token but no merchant in URL, it means it's a new Google login
-            // We should clear currentShop to force them to connect a store
+            // Fresh Google OAuth — Shopify store not connected yet.
+            // Clear any stale shop data and shopifyConnected flag so the user
+            // must go through store-access → Shopify OAuth before hitting the dashboard.
             if (!merchant) {
                 console.log('🧹 Clearing old shop data for new user')
                 localStorage.removeItem('currentShop')
+                localStorage.removeItem('shopifyConnected')
                 setIsAuthenticated(true)
             } else {
                 localStorage.setItem('currentShop', merchant)
+                localStorage.setItem('shopifyConnected', 'true')
                 setIsAuthenticated(true)
                 navigate(`/dashboard/${merchant}`)
             }
@@ -45,11 +48,14 @@ export default function OnboardingPage() {
         } else {
             const existingToken = localStorage.getItem('token')
             const existingShop = localStorage.getItem('currentShop')
+            // Only auto-redirect to dashboard if Shopify OAuth has been completed
+            const shopifyConnected = localStorage.getItem('shopifyConnected') === 'true'
             if (existingToken) {
                 setIsAuthenticated(true)
-                if (existingShop) {
+                if (existingShop && shopifyConnected) {
                     navigate(`/dashboard/${existingShop}`)
                 }
+                // else: stay on onboarding so user can connect their store
             } else {
                 navigate('/signin')
             }
