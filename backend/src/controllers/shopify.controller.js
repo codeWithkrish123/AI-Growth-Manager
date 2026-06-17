@@ -180,6 +180,7 @@ export async function handleShopifyCallback(req, res) {
     try {
       if (merchantId) {
         // Account linking: update the existing merchant record
+        // Force update shopDomain to the real Shopify domain
         merchant = await MerchantModel.findOneAndUpdate(
           { _id: merchantId },
           {
@@ -194,7 +195,7 @@ export async function handleShopifyCallback(req, res) {
             isActive: true
           }
         );
-        logger.info({ shopDomain, merchantId }, 'Merchant record linked and updated');
+        logger.info({ shopDomain, merchantId }, 'Merchant record linked and domain updated');
       }
 
       if (!merchant) {
