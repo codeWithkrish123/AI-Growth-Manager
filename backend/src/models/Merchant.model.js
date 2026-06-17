@@ -228,8 +228,10 @@ export const MerchantModel = {
     if (query.shopDomain) {
       return await Merchant.findByShopDomain(query.shopDomain);
     }
-    if (query._id) {
-      return await Merchant.findById(query._id);
+    // Handle both _id and id query keys
+    const idToLookup = query._id || query.id;
+    if (idToLookup) {
+      return await Merchant.findById(idToLookup);
     }
     if (query.email) {
       return await Merchant.findByEmail(query.email);
