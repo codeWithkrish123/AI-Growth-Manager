@@ -40,6 +40,7 @@ export async function authMiddleware(req, res, next) {
 
     try {
       decoded = jwt.verify(token, secret);
+      logger.debug({ decoded }, 'JWT decoded successfully');
     } catch (jwtErr) {
       logger.error({ 
         err: jwtErr.message, 
@@ -60,11 +61,13 @@ export async function authMiddleware(req, res, next) {
     // Find merchant by ID from token if available, otherwise fallback to shopDomain
     let merchant = null;
     if (decoded.merchantId && decoded.merchantId !== 'temp') {
+      logger.debug({ merchantId: decoded.merchantId }, 'Looking up merchant by ID from token');
       merchant = await MerchantModel.findOne({ _id: decoded.merchantId });
     }
     
     // Fallback to domain search
     if (!merchant) {
+      logger.debug({ cleanShop }, 'Merchant ID not found or missing, falling back to shopDomain lookup');
       merchant = await MerchantModel.findOne({ shopDomain: cleanShop });
     }
 
