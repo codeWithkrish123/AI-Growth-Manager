@@ -58,21 +58,50 @@ router.post('/api/auth/activate-store',   rateLimiter, activateStore);
 router.get('/api/auth/status',            rateLimiter, getAuthStatus);
 router.post('/api/auth/disconnect',       rateLimiter, disconnectShopify);
 
-// ── One-time DB fix: activate stuck merchant (safe — just sets is_active=true) ─
+// ── One-time DB fix: merge Google placeholder merchant with real Shopify merchant ─
 router.get('/api/auth/fix-inactive-merchant', async (req, res) => {
   try {
     const { query: dbQuery } = await import('../config/database.js');
-    // Activate ALL merchants that have a stored access token but are inactive
-    const result = await dbQuery(
-      `UPDATE merchants
-       SET is_active  = true,
-           updated_at = NOW()
-       WHERE is_active = false
-         AND access_token_enc != ''
-         AND access_token_enc IS NOT NULL
-       RETURNING id, shop_domain, is_active`,
+    
+    const REAL_SHOP = 'ai-product-optimizer.myshopify.com';
+    const GOOGLE_MERCHANT_ID = '7fe4aa1e-0d4c-46ef-8470-5235473dd6c5';
+
+    // Get the real Shopify merchant row (the one with the actual access token)
+    const realRow = await dbQuery(
+      `SELECT id, shop_domain, access_token_enc, scope, shop_info FROM merchants WHERE shop_domain = $1`,
+      [REAL_SHOP]
     );
-    res.json({ fixed: result.rows.length, merchants: result.rows });
+
+    if (realRow.rows.length > 0) {
+      // Real merchant exists — update Google placeholder row to match
+      const real = realRow.rows[0];
+      await dbQuery(
+        `UPDATE merchants
+         SET shop_domain      = $1,
+             access_token_enc = $2,
+             scope            = $3,
+             shop_info        = $4,
+             is_active        = true,
+             updated_at       = NOW()
+         WHERE id = $5`,
+        [REAL_SHOP, real.access_token_enc, real.scope, real.shop_info, GOOGLE_MERCHANT_ID]
+      );
+      // Delete the now-duplicate real row so there's no unique constraint conflict
+      await dbQuery(`DELETE FROM merchants WHERE id = $1`, [real.id]);
+      res.json({ status: 'merged', shopDomain: REAL_SHOP, keptId: GOOGLE_MERCHANT_ID, deletedId: real.id });
+    } else {
+      // No real row — just update the domain directly on the Google placeholder
+      const result = await dbQuery(
+        `UPDATE merchants
+         SET shop_domain = $1,
+             is_active   = true,
+             updated_at  = NOW()
+         WHERE id = $2
+         RETURNING id, shop_domain, is_active`,
+        [REAL_SHOP, GOOGLE_MERCHANT_ID]
+      );
+      res.json({ status: 'domain_updated', merchants: result.rows });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
