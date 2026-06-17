@@ -44,6 +44,10 @@ export const config = {
   jwt: {
     secret: process.env.JWT_SECRET || 'default-jwt-secret-key-32-chars-min',
   },
+  _debugJwtSecret: () => {
+    const s = process.env.JWT_SECRET;
+    return s ? `${s.substring(0, 4)}...${s.substring(s.length - 4)}` : 'MISSING';
+  },
 
   encryption: {
     key: process.env.ENCRYPTION_KEY || 'default-encryption-key-32-chars-long',
