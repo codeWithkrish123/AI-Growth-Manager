@@ -89,12 +89,21 @@ export async function initiateShopifyAuth(req, res) {
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `state=${state}`;
 
+    // Generate JWT token for the session (to keep it alive during OAuth)
+    const jwt = (await import('jsonwebtoken')).default;
+    const token = jwt.sign(
+      { merchantId: existingMerchant ? existingMerchant.id : 'temp' },
+      config.jwt.secret,
+      { expiresIn: '1h' }
+    );
+
     logger.info({ shopDomain }, 'Initiating Shopify OAuth');
 
     return success(res, {
       authUrl,
       shopDomain,
-      state
+      state,
+      token // Return the current token to the frontend
     });
 
   } catch (err) {

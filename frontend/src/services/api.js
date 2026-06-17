@@ -35,12 +35,25 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('token');
-      // Only redirect if not already on a public page
-      const pub = ['/', '/signin', '/onboarding', '/pricing', '/about', '/resources'];
-      if (!pub.some(p => window.location.pathname.startsWith(p))) {
-        window.location.href = '/onboarding';
+      console.warn('⚠️ Unauthorized request detected:', error.config.url);
+      
+      // If it's a 401, it could be a race condition or an invalid token.
+      // We only clear the token and redirect if it's NOT a shop-specific data fetch
+      // that might have failed because the merchant record is still being created/updated.
+      const isAuthEndpoint = error.config.url.includes('/auth/');
+      const isDashboardEndpoint = error.config.url.endsWith('/dashboard');
+      
+      if (isAuthEndpoint || isDashboardEndpoint) {
+        console.error('❌ Critical auth failure. Wiping session.');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('token');
+        
+        const pub = ['/', '/signin', '/onboarding', '/pricing', '/about', '/resources'];
+        if (!pub.some(p => window.location.pathname.startsWith(p))) {
+          window.location.href = '/onboarding';
+        }
+      } else {
+        console.warn('✨ Non-critical 401. Keeping token for retry.');
       }
     }
     return Promise.reject(error);
