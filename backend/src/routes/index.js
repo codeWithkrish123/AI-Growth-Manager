@@ -3,7 +3,7 @@ import { authMiddleware, shopifyHmac, rateLimiter } from '../middlewares/index.j
 import { authBegin, authCallback, getOAuthUrl } from '../controllers/auth.controller.js';
 import {
   initiateShopifyAuth, handleShopifyCallback, getAuthStatus,
-  disconnectShopify, handleEmbeddedAppLaunch,
+  disconnectShopify, handleEmbeddedAppLaunch, activateStore,
 } from '../controllers/shopify.controller.js';
 import {
   getDashboard, triggerAnalysis, getProducts, getLatestAnalysis,
@@ -54,6 +54,7 @@ router.use('/auth/google',            googleRoutes);
 // ── Shopify OAuth (public) ─────────────────────────────────────────────────────
 router.post('/api/auth/shopify/initiate', rateLimiter, initiateShopifyAuth);
 router.get('/api/auth/shopify/callback',  rateLimiter, handleShopifyCallback);
+router.post('/api/auth/activate-store',   rateLimiter, activateStore);
 router.get('/api/auth/status',            rateLimiter, getAuthStatus);
 router.post('/api/auth/disconnect',       rateLimiter, disconnectShopify);
 

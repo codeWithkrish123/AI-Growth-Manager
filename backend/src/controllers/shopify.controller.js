@@ -357,9 +357,81 @@ async function getShopInfo(shopDomain, accessToken) {
 }
 
 /**
- * Get merchant status
- * GET /api/auth/status
+ * Direct store activation — activates an inactive merchant that has a valid
+ * Shopify access token already stored. Used when the DB record is stuck as
+ * inactive but the Shopify app is actually still installed on the store.
+ * POST /api/auth/activate-store
  */
+export async function activateStore(req, res) {
+  try {
+    const { shop } = req.body;
+    if (!shop) return error(res, 'Shop domain is required', 400);
+
+    const shopDomain = shop.replace('.myshopify.com', '').toLowerCase() + '.myshopify.com';
+
+    // Find merchant by shopDomain
+    let merchant = await MerchantModel.findOne({ shopDomain });
+
+    // If not found by domain, try by merchantId from token
+    if (!merchant) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const decoded = jwt.verify(authHeader.split(' ')[1], config.jwt.secret);
+          if (decoded.merchantId) {
+            merchant = await MerchantModel.findOne({ _id: decoded.merchantId });
+          }
+        } catch (_) {}
+      }
+    }
+
+    if (!merchant) {
+      // No existing record — they need to go through full Shopify OAuth
+      return error(res, 'Store not found. Please connect via Shopify OAuth.', 404);
+    }
+
+    // Check if they already have a Shopify access token stored
+    const hasAccessToken = merchant.accessTokenEnc && merchant.accessTokenEnc.length > 0;
+
+    if (!hasAccessToken) {
+      return error(res, 'No Shopify access token on file. Please reconnect via Shopify OAuth.', 400);
+    }
+
+    // Activate the merchant — update shopDomain if needed and set is_active = true
+    const activated = await dbQuery(
+      `UPDATE merchants
+       SET shop_domain  = $1,
+           is_active    = true,
+           updated_at   = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [shopDomain, merchant.id]
+    );
+
+    if (!activated.rows.length) {
+      return error(res, 'Failed to activate store', 500);
+    }
+
+    const updatedMerchant = Merchant.mapRowToMerchant(activated.rows[0]);
+
+    // Issue a fresh 7-day token
+    const token = jwt.sign(
+      { merchantId: updatedMerchant.id, shopDomain: updatedMerchant.shopDomain },
+      config.jwt.secret,
+      { expiresIn: '7d' }
+    );
+
+    logger.info({ shopDomain, merchantId: updatedMerchant.id }, 'Store activated directly');
+
+    return success(res, { token, shopDomain, merchantId: updatedMerchant.id });
+
+  } catch (err) {
+    logger.error({ err }, 'Failed to activate store');
+    return error(res, 'Activation failed', 500);
+  }
+}
+
+
 export async function getAuthStatus(req, res) {
   try {
     const { shop } = req.query;

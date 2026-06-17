@@ -19,34 +19,53 @@ export default function StoreAccessPage() {
         setIsVerifying(true)
         try {
             const token = localStorage.getItem('token')
-            const url = BACKEND_URL ? `${BACKEND_URL}/api/auth/shopify/initiate` : '/api/auth/shopify/initiate'
-            const response = await fetch(url, {
+            const baseUrl = BACKEND_URL || ''
+
+            // Step 1: Try direct activation — if the merchant already has a Shopify
+            // access token stored, just flip is_active=true and get a fresh JWT.
+            // This handles the case where the DB record is stuck as inactive.
+            const activateRes = await fetch(`${baseUrl}/api/auth/activate-store`, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': token ? `Bearer ${token}` : ''
                 },
-                // Always force re-auth so we get a fresh Shopify OAuth and a real token.
-                // Without force:true, the backend shortcuts to "already connected" and
-                // returns no authUrl — leaving the user with the Google-only token that
-                // the auth middleware rejects for data endpoints.
+                body: JSON.stringify({ shop })
+            })
+
+            const activateData = await activateRes.json()
+
+            if (activateRes.ok && activateData.success && activateData.data?.token) {
+                // Got a real token — store it and go to dashboard
+                console.log('✅ Store activated directly, got real token')
+                localStorage.setItem('token', activateData.data.token)
+                localStorage.setItem('shopifyConnected', 'true')
+                localStorage.setItem('currentShop', shop)
+                navigate(`/dashboard/${activateData.data.shopDomain || shop}`)
+                return
+            }
+
+            // Step 2: No existing Shopify token — must go through full Shopify OAuth
+            console.log('⚠️ No stored token, initiating Shopify OAuth...')
+            const initiateRes = await fetch(`${baseUrl}/api/auth/shopify/initiate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : ''
+                },
                 body: JSON.stringify({ shop, force: true })
             })
 
-            const data = await response.json()
+            const initiateData = await initiateRes.json()
 
-            if (!response.ok || !data.success) {
-                throw new Error(data?.error?.message || data?.error || `HTTP ${response.status}`)
+            if (!initiateRes.ok || !initiateData.success) {
+                throw new Error(initiateData?.error?.message || initiateData?.error || `HTTP ${initiateRes.status}`)
             }
 
-            // Redirect to Shopify OAuth. The callback will issue a real token with the
-            // correct merchantId and redirect to /dashboard/:shop?token=...
-            if (data.data?.authUrl) {
-                window.location.href = data.data.authUrl
+            if (initiateData.data?.authUrl) {
+                window.location.href = initiateData.data.authUrl
             } else {
-                // Fallback: backend said store is connected, go to dashboard
-                localStorage.setItem('shopifyConnected', 'true')
-                navigate(`/dashboard/${data.data?.shopDomain || data.data?.shop || shop}`)
+                throw new Error('No authorization URL returned from server')
             }
         } catch (e) {
             console.error('Authorization error:', e)
