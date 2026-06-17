@@ -32,10 +32,13 @@ export async function authMiddleware(req, res, next) {
     const token = authHeader.split(' ')[1];
     let decoded;
 
+    const secret = process.env.JWT_SECRET || config.jwt.secret;
+    logger.debug({ secretSnippet: secret.substring(0, 5) + '...' }, 'Using JWT secret');
+
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || config.jwt.secret);
+      decoded = jwt.verify(token, secret);
     } catch (jwtErr) {
-      logger.warn({ err: jwtErr.message }, 'JWT verification failed');
+      logger.error({ err: jwtErr.message, token: token.substring(0, 10) + '...' }, 'JWT verification failed');
       throw new UnauthorizedError('Invalid or expired token');
     }
 
