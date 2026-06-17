@@ -89,22 +89,28 @@ export async function initiateShopifyAuth(req, res) {
       `scope=${scopes.join(',')}&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `state=${state}`;
+// Generate JWT token for the session (to keep it alive during OAuth)
+const jwt = (await import('jsonwebtoken')).default;
 
-    // Generate JWT token for the session (to keep it alive during OAuth)
-    // Extract merchantId from request if user is authenticated via Bearer token
-    let merchantId = 'temp'; 
-    if (req.user && req.user.merchantId) {
-        merchantId = req.user.merchantId;
-    } else if (existingMerchant) {
-        merchantId = existingMerchant.id;
+// Extract merchantId from request if user is authenticated via Bearer token
+let merchantId = 'temp'; 
+if (req.user && req.user.merchantId) {
+    merchantId = req.user.merchantId;
+} else if (req.user && req.user.email) {
+    // Fallback: Lookup by email if merchantId is missing but email is present
+    const merchantByEmail = await MerchantModel.findOne({ email: req.user.email });
+    if (merchantByEmail) {
+        merchantId = merchantByEmail.id;
     }
-    
-    const token = jwt.sign(
-      { merchantId: merchantId },
-      config.jwt.secret,
-      { expiresIn: '1h' }
-    );
+} else if (existingMerchant) {
+    merchantId = existingMerchant.id;
+}
 
+const token = jwt.sign(
+  { merchantId: merchantId },
+  config.jwt.secret,
+  { expiresIn: '1h' }
+);
     logger.info({ shopDomain }, 'Initiating Shopify OAuth');
 
     return success(res, {
