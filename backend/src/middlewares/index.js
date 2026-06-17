@@ -57,10 +57,20 @@ export async function authMiddleware(req, res, next) {
 
     // Normalized shop domain lookup
     const cleanShop = shopDomain.replace('.myshopify.com', '').toLowerCase() + '.myshopify.com';
-    const merchant = await MerchantModel.findOne({ shopDomain: cleanShop });
+    
+    // Find merchant by ID from token if available, otherwise fallback to shopDomain
+    let merchant = null;
+    if (decoded.merchantId && decoded.merchantId !== 'temp') {
+      merchant = await MerchantModel.findOne({ _id: decoded.merchantId });
+    }
+    
+    // Fallback to domain search
+    if (!merchant) {
+      merchant = await MerchantModel.findOne({ shopDomain: cleanShop });
+    }
 
     if (!merchant) {
-      logger.warn({ shopDomain: cleanShop }, 'Merchant not found in database');
+      logger.warn({ shopDomain: cleanShop, merchantId: decoded.merchantId }, 'Merchant not found in database');
       throw new UnauthorizedError('Store not connected. Please connect your Shopify store.');
     }
     
