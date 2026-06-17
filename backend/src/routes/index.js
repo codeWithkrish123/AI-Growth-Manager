@@ -58,6 +58,26 @@ router.post('/api/auth/activate-store',   rateLimiter, activateStore);
 router.get('/api/auth/status',            rateLimiter, getAuthStatus);
 router.post('/api/auth/disconnect',       rateLimiter, disconnectShopify);
 
+// ── One-time DB fix: activate stuck merchant (safe — just sets is_active=true) ─
+router.get('/api/auth/fix-inactive-merchant', async (req, res) => {
+  try {
+    const { query: dbQuery } = await import('../config/database.js');
+    // Activate ALL merchants that have a stored access token but are inactive
+    const result = await dbQuery(
+      `UPDATE merchants
+       SET is_active  = true,
+           updated_at = NOW()
+       WHERE is_active = false
+         AND access_token_enc != ''
+         AND access_token_enc IS NOT NULL
+       RETURNING id, shop_domain, is_active`,
+    );
+    res.json({ fixed: result.rows.length, merchants: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Webhooks (public — HMAC validated) ────────────────────────────────────────
 router.post('/webhooks/shopify', shopifyHmac, handleWebhook);
 
