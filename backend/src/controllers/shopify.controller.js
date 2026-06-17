@@ -91,8 +91,18 @@ export async function initiateShopifyAuth(req, res) {
       `state=${state}`;
 
     // Generate JWT token for the session (to keep it alive during OAuth)
+    const jwt = (await import('jsonwebtoken')).default;
+    
+    // Extract merchantId from request if user is authenticated via Bearer token
+    let merchantId = 'temp'; 
+    if (req.user && req.user.merchantId) {
+        merchantId = req.user.merchantId;
+    } else if (existingMerchant) {
+        merchantId = existingMerchant.id;
+    }
+    
     const token = jwt.sign(
-      { merchantId: existingMerchant ? existingMerchant.id : 'temp' },
+      { merchantId: merchantId },
       config.jwt.secret,
       { expiresIn: '1h' }
     );
