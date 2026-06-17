@@ -33,9 +33,10 @@ export async function authMiddleware(req, res, next) {
     let decoded;
 
     const secret = process.env.JWT_SECRET || config.jwt.secret;
+    // Log the first 4 chars of the secret to check for mismatch
     logger.debug({ 
-        secretLength: secret.length,
-        token: token.substring(0, 15) + '...'
+        secretSnippet: secret ? (secret.substring(0, 4) + '...') : 'NULL',
+        tokenSnippet: token.substring(0, 15) + '...'
     }, 'Attempting JWT verification');
 
     try {
@@ -43,8 +44,8 @@ export async function authMiddleware(req, res, next) {
     } catch (jwtErr) {
       logger.error({ 
         err: jwtErr.message, 
-        secretLength: secret.length,
-        token: token.substring(0, 15) + '...' 
+        secretSnippet: secret ? (secret.substring(0, 4) + '...') : 'NULL',
+        tokenSnippet: token.substring(0, 15) + '...' 
       }, 'JWT verification failed');
       throw new UnauthorizedError('Invalid or expired token: ' + jwtErr.message);
     }
