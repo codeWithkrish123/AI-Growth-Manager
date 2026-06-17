@@ -33,13 +33,20 @@ export async function authMiddleware(req, res, next) {
     let decoded;
 
     const secret = process.env.JWT_SECRET || config.jwt.secret;
-    logger.debug({ secretSnippet: secret.substring(0, 5) + '...' }, 'Using JWT secret');
+    logger.debug({ 
+        secretLength: secret.length,
+        token: token.substring(0, 15) + '...'
+    }, 'Attempting JWT verification');
 
     try {
       decoded = jwt.verify(token, secret);
     } catch (jwtErr) {
-      logger.error({ err: jwtErr.message, token: token.substring(0, 10) + '...' }, 'JWT verification failed');
-      throw new UnauthorizedError('Invalid or expired token');
+      logger.error({ 
+        err: jwtErr.message, 
+        secretLength: secret.length,
+        token: token.substring(0, 15) + '...' 
+      }, 'JWT verification failed');
+      throw new UnauthorizedError('Invalid or expired token: ' + jwtErr.message);
     }
 
     if (!shopDomain) {
