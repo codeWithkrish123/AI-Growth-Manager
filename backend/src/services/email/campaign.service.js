@@ -5,7 +5,14 @@ import { logger } from '../../utils/logger.js';
 // ─── Campaign CRUD ─────────────────────────────────────────────────────────────
 
 export async function createCampaign(merchantId, shopDomain, data) {
-  const { name, type = 'manual', subject, body } = data;
+  let { name, type = 'manual', subject, body } = data;
+  
+  // Fix for check constraint violation: map allowed types
+  const allowedTypes = ['manual', 'ai_generated', 'abandoned_cart', 'welcome', 'promo'];
+  if (!allowedTypes.includes(type)) {
+      type = 'manual';
+  }
+
   const sql = `
     INSERT INTO email_campaigns (merchant_id, shop_domain, name, type, subject, body)
     VALUES ($1, $2, $3, $4, $5, $6)
