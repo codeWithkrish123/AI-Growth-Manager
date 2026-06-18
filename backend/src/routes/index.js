@@ -58,7 +58,24 @@ router.post('/api/auth/activate-store',   rateLimiter, activateStore);
 router.get('/api/auth/status',            rateLimiter, getAuthStatus);
 router.post('/api/auth/disconnect',       rateLimiter, disconnectShopify);
 
-// ── One-time DB fix: merge Google placeholder merchant with real Shopify merchant ─
+// ── Debug: show current merchant state ────────────────────────────────────────
+router.get('/api/auth/debug-merchant', async (req, res) => {
+  try {
+    const { query: dbQuery } = await import('../config/database.js');
+    const result = await dbQuery(
+      `SELECT id, shop_domain, is_active,
+              (access_token_enc IS NOT NULL AND access_token_enc != '') as has_token,
+              length(access_token_enc) as token_length,
+              shop_info, created_at, updated_at
+       FROM merchants ORDER BY updated_at DESC LIMIT 5`
+    );
+    res.json({ merchants: result.rows, admin_token_set: !!process.env.ADMIN_API_ACCESS_TOKEN, app_url: process.env.APP_URL });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 router.get('/api/auth/fix-inactive-merchant', async (req, res) => {
   try {
     const { query: dbQuery } = await import('../config/database.js');
