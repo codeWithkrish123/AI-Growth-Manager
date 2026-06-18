@@ -262,5 +262,8 @@ export const MerchantModel = {
   
   updateByShopDomain: async (shopDomain, updateData) => {
     return await Merchant.updateByShopDomain(shopDomain, updateData);
+  },
+  deleteByShopDomain: async (shopDomain) => {
+    return await Merchant.deleteByShopDomain(shopDomain);
   }
 };

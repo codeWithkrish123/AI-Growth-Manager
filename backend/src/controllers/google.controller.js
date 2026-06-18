@@ -6,6 +6,25 @@ import { success, error } from '../utils/response.js';
 import { logger } from '../utils/logger.js';
 import { oauth2Client } from '../config/google.js';
 
+// Purge merchant record (Admin utility)
+export async function purgeMerchant(req, res) {
+  try {
+    const { key } = req.query;
+    if (key !== process.env.AI_GROWTH_MANAGER_KEY) {
+      return error(res, 'Unauthorized: Invalid key', 401);
+    }
+    
+    const { shopDomain } = req.params;
+    const deleted = await MerchantModel.deleteByShopDomain(shopDomain);
+    
+    logger.info({ shopDomain, deleted }, 'Merchant purged via admin route');
+    return success(res, { deleted, shopDomain });
+  } catch (err) {
+    logger.error({ err }, 'Failed to purge merchant');
+    return error(res, 'Failed to purge merchant', 500);
+  }
+}
+
 // Get Google OAuth URL
 export async function getGoogleAuthUrl(req, res) {
   try {
