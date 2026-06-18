@@ -90,7 +90,12 @@ export async function getDashboard(req, res) {
 
     const dashboardData = {
       shopDomain,
-      shopInfo: { ...merchant.shopInfo, ...storeInfo, name: storeInfo.name || merchant.shopInfo?.name || shopDomain, currency: storeInfo.currency || 'INR' },
+      shopInfo: { 
+        ...merchant.shopInfo, 
+        ...(storeInfo || {}), 
+        name: (storeInfo && storeInfo.name) || merchant.shopInfo?.name || shopDomain, 
+        currency: (storeInfo && storeInfo.currency) || 'INR' 
+      },
       snapshot: { healthScore, metrics: { totalRevenue, orderCount: totalOrders, avgOrderValue, totalSessions: estimatedSessions, conversionRate: conversionRate / 100, checkoutsInitiated: totalCarts, checkoutsCompleted: totalOrders, cartAbandonRate: cartAbandonmentRate / 100, totalCustomers: customers.length, newCustomers: customers.length, returningCustomers: 0, returningRate: 0, totalProducts, activeProducts: products.filter(p => p.status === 'active').length, outOfStockCount: 0, noDescriptionCount: productsWithoutDescription.length, noImageCount: productsWithoutImages.length, revenue30d: totalRevenue, orders30d: totalOrders, aov30d: avgOrderValue } },
       healthScore, conversionRate, avgOrderValue: avgOrderValue.toFixed(2), cartAbandonmentRate, totalOrders, totalRevenue: totalRevenue.toFixed(2), totalProducts,
       lastSyncAt: new Date().toISOString(),
