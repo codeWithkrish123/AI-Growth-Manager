@@ -10,8 +10,12 @@ import { shopifyCache } from '../utils/cache.js';
 
 // ─── Helper: get access token ─────────────────────────────────────────────────
 function getToken(merchant) {
-  const t = merchant.getAccessToken();
-  return t || process.env.ADMIN_API_ACCESS_TOKEN || null;
+  try {
+    const t = merchant.getAccessToken();
+    // Validate it looks like a real Shopify token (non-empty, reasonable length)
+    if (t && t.length > 10) return t;
+  } catch (_) {}
+  return process.env.ADMIN_API_ACCESS_TOKEN || null;
 }
 
 /**

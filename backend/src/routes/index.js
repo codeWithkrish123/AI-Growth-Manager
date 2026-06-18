@@ -62,21 +62,59 @@ router.post('/api/auth/disconnect',       rateLimiter, disconnectShopify);
 router.get('/api/auth/debug-merchant', async (req, res) => {
   try {
     const { query: dbQuery } = await import('../config/database.js');
+    const { decrypt } = await import('../utils/encryption.js');
     const result = await dbQuery(
       `SELECT id, shop_domain, is_active,
               (access_token_enc IS NOT NULL AND access_token_enc != '') as has_token,
               length(access_token_enc) as token_length,
+              access_token_enc,
               shop_info, created_at, updated_at
        FROM merchants ORDER BY updated_at DESC LIMIT 5`
     );
-    res.json({ merchants: result.rows, admin_token_set: !!process.env.ADMIN_API_ACCESS_TOKEN, app_url: process.env.APP_URL });
+
+    // Try to decrypt each token to see if it's valid
+    const merchants = result.rows.map(m => {
+      let decrypted_preview = null;
+      let decrypt_error = null;
+      try {
+        const dec = decrypt(m.access_token_enc);
+        decrypted_preview = dec ? `${dec.substring(0, 8)}... (length ${dec.length})` : 'empty';
+      } catch (e) {
+        decrypt_error = e.message;
+      }
+      return { ...m, access_token_enc: undefined, decrypted_preview, decrypt_error };
+    });
+
+    res.json({ merchants, admin_token_set: !!process.env.ADMIN_API_ACCESS_TOKEN, app_url: process.env.APP_URL, encryption_key_length: (process.env.ENCRYPTION_KEY || '').length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// ── Set Shopify access token directly (bypasses OAuth when callback can't complete) ─
+router.post('/api/auth/set-shop-token', async (req, res) => {
+  try {
+    const { shop, token, secret } = req.body;
+    if (secret !== 'aigrowthmanager-secret-key-2024') return res.status(403).json({ error: 'Forbidden' });
+    if (!shop || !token) return res.status(400).json({ error: 'shop and token required' });
 
-router.get('/api/auth/fix-inactive-merchant', async (req, res) => {
+    const { query: dbQuery } = await import('../config/database.js');
+    const { encrypt } = await import('../utils/encryption.js');
+
+    const shopDomain = shop.replace('.myshopify.com', '').toLowerCase() + '.myshopify.com';
+    const result = await dbQuery(
+      `UPDATE merchants SET access_token_enc = $1, is_active = true, updated_at = NOW()
+       WHERE shop_domain = $2 RETURNING id, shop_domain, is_active`,
+      [encrypt(token), shopDomain]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Merchant not found: ' + shopDomain });
+    res.json({ status: 'ok', merchant: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+ async (req, res) => {
   try {
     const { query: dbQuery } = await import('../config/database.js');
     const { encrypt } = await import('../utils/encryption.js');
