@@ -58,8 +58,8 @@ router.post('/api/auth/activate-store',   rateLimiter, activateStore);
 router.get('/api/auth/status',            rateLimiter, getAuthStatus);
 router.post('/api/auth/disconnect',       rateLimiter, disconnectShopify);
 
-// ── Debug / one-time fix endpoints (public, no auth) ──────────────────────────
-router.get('/api/auth/debug-merchant', async (req, res) => {
+// ── Setup/debug endpoints — use /setup/ prefix to avoid /api/:shopDomain match ─
+router.get('/setup/debug', async (_req, res) => {
   try {
     const { query: dbQuery } = await import('../config/database.js');
     const { decrypt } = await import('../utils/encryption.js');
@@ -67,7 +67,7 @@ router.get('/api/auth/debug-merchant', async (req, res) => {
       `SELECT id, shop_domain, is_active,
               (access_token_enc IS NOT NULL AND access_token_enc != '') as has_token,
               length(access_token_enc) as token_length,
-              shop_info, created_at, updated_at
+              shop_info, updated_at
        FROM merchants ORDER BY updated_at DESC LIMIT 5`
     );
     const merchants = result.rows.map(m => {
@@ -75,53 +75,35 @@ router.get('/api/auth/debug-merchant', async (req, res) => {
       let decrypt_error = null;
       try {
         const dec = decrypt(m.access_token_enc || '');
-        decrypted_preview = dec ? `${dec.substring(0, 8)}... (length ${dec.length})` : 'empty';
+        decrypted_preview = dec ? dec.substring(0, 10) + '... len=' + dec.length : 'empty';
       } catch (e) {
         decrypt_error = e.message;
       }
       return { ...m, decrypted_preview, decrypt_error };
     });
-    res.json({
-      merchants,
-      admin_token_set: !!process.env.ADMIN_API_ACCESS_TOKEN,
-      app_url: process.env.APP_URL,
-      encryption_key_length: (process.env.ENCRYPTION_KEY || '').length,
-    });
+    res.json({ merchants, app_url: process.env.APP_URL, encryption_key_length: (process.env.ENCRYPTION_KEY || '').length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Store a Shopify access token directly via form or API
-router.get('/api/auth/set-shop-token', (req, res) => {
-  res.send(`
-    <html><body style="font-family:sans-serif;max-width:500px;margin:50px auto;padding:20px">
-    <h2>Set Shopify Token</h2>
-    <form method="POST" action="/api/auth/set-shop-token">
-      <p><label>Shop domain:<br><input name="shop" value="ai-product-optimizer.myshopify.com" style="width:100%;padding:8px"></label></p>
-      <p><label>Shopify access token (shpat_...):<br><input name="token" placeholder="shpat_xxxxx" style="width:100%;padding:8px"></label></p>
-      <p><label>Secret:<br><input name="secret" value="aigrowthmanager-secret-key-2024" style="width:100%;padding:8px"></label></p>
-      <button type="submit" style="padding:10px 20px;background:#2563eb;color:white;border:none;cursor:pointer">Save Token</button>
+router.get('/setup/set-token', (_req, res) => {
+  res.send(`<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:520px;margin:60px auto;padding:24px">
+    <h2>Set Shopify Access Token</h2>
+    <form method="POST" action="/setup/set-token">
+      <p><b>Shop domain</b><br><input name="shop" value="ai-product-optimizer.myshopify.com" style="width:100%;padding:8px;margin-top:4px"></p>
+      <p><b>Access token (shpat_...)</b><br><input name="token" placeholder="shpat_xxxx" style="width:100%;padding:8px;margin-top:4px"></p>
+      <p><b>Secret</b><br><input name="secret" value="aigrowthmanager-secret-key-2024" style="width:100%;padding:8px;margin-top:4px"></p>
+      <button type="submit" style="padding:12px 24px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:15px;margin-top:8px">Save Token</button>
     </form>
-    <hr>
-    <h3>How to get your Shopify token:</h3>
-    <ol>
-      <li>Go to <a href="https://ai-product-optimizer.myshopify.com/admin/settings/apps/development" target="_blank">Shopify Admin → Settings → Apps → Develop apps</a></li>
-      <li>Click your app (AI Growth Manager)</li>
-      <li>Click <strong>API credentials</strong> tab</li>
-      <li>Click <strong>Install app</strong> or <strong>Uninstall and reinstall</strong></li>
-      <li>Copy the <strong>Admin API access token</strong> (shown once)</li>
-      <li>Paste it above and click Save</li>
-    </ol>
-    </body></html>
-  `);
+  </body></html>`);
 });
 
-router.post('/api/auth/set-shop-token', async (req, res) => {
+router.post('/setup/set-token', async (req, res) => {
   try {
     const { shop, token, secret } = req.body;
-    if (secret !== 'aigrowthmanager-secret-key-2024') return res.status(403).json({ error: 'Forbidden' });
-    if (!shop || !token) return res.status(400).json({ error: 'shop and token required' });
+    if (secret !== 'aigrowthmanager-secret-key-2024') return res.status(403).send('Forbidden');
+    if (!shop || !token) return res.status(400).send('shop and token required');
     const { query: dbQuery } = await import('../config/database.js');
     const { encrypt } = await import('../utils/encryption.js');
     const shopDomain = shop.replace('.myshopify.com', '').toLowerCase() + '.myshopify.com';
@@ -130,10 +112,14 @@ router.post('/api/auth/set-shop-token', async (req, res) => {
        WHERE shop_domain = $2 RETURNING id, shop_domain, is_active`,
       [encrypt(token), shopDomain]
     );
-    if (!result.rows.length) return res.status(404).json({ error: 'Merchant not found: ' + shopDomain });
-    res.json({ status: 'ok', merchant: result.rows[0] });
+    if (!result.rows.length) return res.status(404).send('Merchant not found: ' + shopDomain);
+    res.send(`<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:520px;margin:60px auto;padding:24px">
+      <h2 style="color:green">Token saved successfully!</h2>
+      <p>Store: <b>${result.rows[0].shop_domain}</b> is now active.</p>
+      <p><a href="https://ai-growth-manager.vercel.app/signin" style="color:#2563eb">Go sign in and open your dashboard</a></p>
+    </body></html>`);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).send('Error: ' + err.message);
   }
 });
 
@@ -145,41 +131,26 @@ const m = Router({ mergeParams: true });
 m.use(rateLimiter);
 m.use(authMiddleware);
 
-// Dashboard
 m.get('/dashboard',        getDashboard);
 m.get('/products',         getProducts);
 m.post('/products/create', createProduct);
 m.post('/products/:productId/optimize', optimizeProduct);
-
-// Sync
-m.post('/sync',           triggerSync);
-m.get('/sync/:syncJobId', getSyncStatus);
-
-// Analysis
-m.post('/analyze',        triggerAnalysis);
-m.get('/analysis/latest', getLatestAnalysis);
-
-// Fixes
-m.post('/fix',                     applyFix);
-m.get('/fixes',                    listFixes);
-m.get('/fix/:fixActionId',         getFixStatus);
+m.post('/sync',            triggerSync);
+m.get('/sync/:syncJobId',  getSyncStatus);
+m.post('/analyze',         triggerAnalysis);
+m.get('/analysis/latest',  getLatestAnalysis);
+m.post('/fix',             applyFix);
+m.get('/fixes',            listFixes);
+m.get('/fix/:fixActionId', getFixStatus);
 m.get('/fix/:fixActionId/preview', previewFixAction);
-
-// Health history
-m.get('/health-history', getHealthHistory);
-
-// AI features
+m.get('/health-history',   getHealthHistory);
 m.post('/ai/generate-descriptions', generateDescriptions);
-
-// Email campaigns
 m.get('/email/campaigns',           getEmailCampaigns);
 m.post('/email/campaigns',          createEmailCampaign);
 m.post('/email/ai-generate',        generateAiEmail);
 m.post('/email/ai-prompt-compose',  promptComposeEmail);
 m.post('/email/campaigns/:id/send', sendEmailCampaign);
 m.get('/email/analytics',           getEmailAnalytics);
-
-// Ads
 m.get('/ads/accounts',                  getAdsAccounts);
 m.post('/ads/connect/:platform',        connectAdAccount);
 m.delete('/ads/accounts/:id',           disconnectAdAccount);
@@ -197,8 +168,6 @@ m.post('/ads/ai/suggestions/:id/apply', applyAdsSuggestion);
 m.post('/ads/ai/budget-optimize',       aiBudgetOptimize);
 m.post('/ads/ai/audience-suggest',      aiAudienceSuggest);
 m.post('/ads/ai/creative-generate',     aiCreativeGenerate);
-
-// SEO
 m.post('/seo/audit/run',             runSeoAudit);
 m.get('/seo/audit/latest',           getLatestSeoAudit);
 m.get('/seo/audit/history',          getSeoAuditHistory);
