@@ -425,11 +425,16 @@ export async function activateStore(req, res) {
 
     logger.info({ shopDomain, merchantId: updatedMerchant.id }, 'Store activated directly');
 
+    // If the token is invalid (as detected by Shopify API in other services),
+    // we might need to re-run the install/connect flow. 
+    // For now, let's just ensure we return a proper response.
     return success(res, { token, shopDomain, merchantId: updatedMerchant.id });
 
   } catch (err) {
     logger.error({ err }, 'Failed to activate store');
-    return error(res, 'Activation failed', 500);
+    // If activation fails because the record is truly messed up,
+    // tell the frontend to force a full re-auth
+    return error(res, 'Activation failed', 400);
   }
 }
 
