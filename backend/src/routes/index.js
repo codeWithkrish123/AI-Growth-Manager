@@ -18,7 +18,7 @@ import {
   generateAiEmail, promptComposeEmail,
   sendEmailCampaign, getEmailAnalytics,
 } from '../controllers/email.controller.js';
-import { generateDescriptions } from '../controllers/ai.controller.js';
+import { generateDescriptions, optimizePrices } from '../controllers/ai.controller.js';
 import {
   getAdsAccounts, connectAdAccount, disconnectAdAccount,
   getAdsCampaigns, createAdsCampaign, updateAdsCampaign,
