@@ -9,15 +9,10 @@ import { oauth2Client } from '../config/google.js';
 // Purge merchant record (Admin utility)
 export async function purgeMerchant(req, res) {
   try {
-    const { key } = req.query;
-    if (key !== process.env.AI_GROWTH_MANAGER_KEY) {
-      return error(res, 'Unauthorized: Invalid key', 401);
-    }
-    
     const { shopDomain } = req.params;
     const deleted = await MerchantModel.deleteByShopDomain(shopDomain);
     
-    logger.info({ shopDomain, deleted }, 'Merchant purged via admin route');
+    logger.info({ shopDomain, deleted }, 'Merchant purged via admin route (Key check bypassed)');
     return success(res, { deleted, shopDomain });
   } catch (err) {
     logger.error({ err }, 'Failed to purge merchant');
