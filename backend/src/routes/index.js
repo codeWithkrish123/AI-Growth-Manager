@@ -145,6 +145,7 @@ m.get('/fix/:fixActionId', getFixStatus);
 m.get('/fix/:fixActionId/preview', previewFixAction);
 m.get('/health-history',   getHealthHistory);
 m.post('/ai/generate-descriptions', generateDescriptions);
+m.post('/ai/optimize-prices',     optimizePrices);
 m.get('/email/campaigns',           getEmailCampaigns);
 m.post('/email/campaigns',          createEmailCampaign);
 m.post('/email/ai-generate',        generateAiEmail);
