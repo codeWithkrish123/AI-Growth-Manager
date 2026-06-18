@@ -13,8 +13,14 @@ function getToken(merchant) {
   try {
     const t = merchant.getAccessToken();
     // Validate it looks like a real Shopify token (non-empty, reasonable length)
-    if (t && t.length > 10) return t;
-  } catch (_) {}
+    if (t && t.length > 10) {
+      logger.debug({ tokenSnippet: t.substring(0, 5) + '...' }, 'Using merchant access token from DB');
+      return t;
+    }
+  } catch (e) {
+    logger.error({ err: e.message }, 'Error retrieving access token');
+  }
+  logger.warn('No valid merchant access token found in DB, attempting fallback to ADMIN_API_ACCESS_TOKEN');
   return process.env.ADMIN_API_ACCESS_TOKEN || null;
 }
 
