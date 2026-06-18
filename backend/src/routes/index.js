@@ -46,10 +46,10 @@ const router = Router();
 router.get('/', handleEmbeddedAppLaunch);
 
 // ── Auth (public) ──────────────────────────────────────────────────────────────
-router.get('/auth/shopify',          authBegin);
-router.get('/auth/callback',         authCallback);
-router.post('/auth/oauth-url',       getOAuthUrl);
-router.use('/auth/google',            googleRoutes);
+router.get('/auth/shopify',    authBegin);
+router.get('/auth/callback',   authCallback);
+router.post('/auth/oauth-url', getOAuthUrl);
+router.use('/auth/google',     googleRoutes);
 
 // ── Shopify OAuth (public) ─────────────────────────────────────────────────────
 router.post('/api/auth/shopify/initiate', rateLimiter, initiateShopifyAuth);
@@ -58,7 +58,7 @@ router.post('/api/auth/activate-store',   rateLimiter, activateStore);
 router.get('/api/auth/status',            rateLimiter, getAuthStatus);
 router.post('/api/auth/disconnect',       rateLimiter, disconnectShopify);
 
-// ── Debug: show current merchant state ────────────────────────────────────────
+// ── Debug / one-time fix endpoints (public, no auth) ──────────────────────────
 router.get('/api/auth/debug-merchant', async (req, res) => {
   try {
     const { query: dbQuery } = await import('../config/database.js');
@@ -67,43 +67,39 @@ router.get('/api/auth/debug-merchant', async (req, res) => {
       `SELECT id, shop_domain, is_active,
               (access_token_enc IS NOT NULL AND access_token_enc != '') as has_token,
               length(access_token_enc) as token_length,
-              access_token_enc,
               shop_info, created_at, updated_at
        FROM merchants ORDER BY updated_at DESC LIMIT 5`
     );
-
-    // Try to decrypt each token to see if it's valid
     const merchants = result.rows.map(m => {
       let decrypted_preview = null;
       let decrypt_error = null;
       try {
-        const dec = decrypt(m.access_token_enc);
+        const dec = decrypt(m.access_token_enc || '');
         decrypted_preview = dec ? `${dec.substring(0, 8)}... (length ${dec.length})` : 'empty';
       } catch (e) {
         decrypt_error = e.message;
       }
-      return { ...m, access_token_enc: undefined, decrypted_preview, decrypt_error };
+      return { ...m, decrypted_preview, decrypt_error };
     });
-
-    res.json({ merchants, admin_token_set: !!process.env.ADMIN_API_ACCESS_TOKEN, app_url: process.env.APP_URL, encryption_key_length: (process.env.ENCRYPTION_KEY || '').length });
+    res.json({
+      merchants,
+      admin_token_set: !!process.env.ADMIN_API_ACCESS_TOKEN,
+      app_url: process.env.APP_URL,
+      encryption_key_length: (process.env.ENCRYPTION_KEY || '').length,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ── Shopify OAuth callback test — visit this URL to verify the route is reachable ─
-router.get('/api/auth/shopify/test', (req, res) => {
-  res.json({ status: 'callback route is reachable', app_url: process.env.APP_URL, query: req.query });
-});
+// Store a Shopify access token directly (use when OAuth callback can't complete)
 router.post('/api/auth/set-shop-token', async (req, res) => {
   try {
     const { shop, token, secret } = req.body;
     if (secret !== 'aigrowthmanager-secret-key-2024') return res.status(403).json({ error: 'Forbidden' });
     if (!shop || !token) return res.status(400).json({ error: 'shop and token required' });
-
     const { query: dbQuery } = await import('../config/database.js');
     const { encrypt } = await import('../utils/encryption.js');
-
     const shopDomain = shop.replace('.myshopify.com', '').toLowerCase() + '.myshopify.com';
     const result = await dbQuery(
       `UPDATE merchants SET access_token_enc = $1, is_active = true, updated_at = NOW()
@@ -112,71 +108,6 @@ router.post('/api/auth/set-shop-token', async (req, res) => {
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Merchant not found: ' + shopDomain });
     res.json({ status: 'ok', merchant: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
- async (req, res) => {
-  try {
-    const { query: dbQuery } = await import('../config/database.js');
-    const { encrypt } = await import('../utils/encryption.js');
-    
-    const REAL_SHOP = 'ai-product-optimizer.myshopify.com';
-    const GOOGLE_MERCHANT_ID = '7fe4aa1e-0d4c-46ef-8470-5235473dd6c5';
-
-    // Get the real Shopify merchant row (the one with the actual access token)
-    const realRow = await dbQuery(
-      `SELECT id, shop_domain, access_token_enc, scope, shop_info FROM merchants WHERE shop_domain = $1`,
-      [REAL_SHOP]
-    );
-
-    if (realRow.rows.length > 0) {
-      // Real merchant exists — update Google placeholder row to match
-      const real = realRow.rows[0];
-      await dbQuery(
-        `UPDATE merchants
-         SET shop_domain      = $1,
-             access_token_enc = $2,
-             scope            = $3,
-             shop_info        = $4,
-             is_active        = true,
-             updated_at       = NOW()
-         WHERE id = $5`,
-        [REAL_SHOP, real.access_token_enc, real.scope, real.shop_info, GOOGLE_MERCHANT_ID]
-      );
-      // Delete the now-duplicate real row so there's no unique constraint conflict
-      await dbQuery(`DELETE FROM merchants WHERE id = $1`, [real.id]);
-      return res.json({ status: 'merged', shopDomain: REAL_SHOP, keptId: GOOGLE_MERCHANT_ID, deletedId: real.id });
-    }
-
-    // No real row — check if ADMIN_API_ACCESS_TOKEN env var is available as fallback
-    const adminToken = process.env.ADMIN_API_ACCESS_TOKEN;
-    if (adminToken) {
-      const encryptedToken = encrypt(adminToken);
-      await dbQuery(
-        `UPDATE merchants
-         SET shop_domain      = $1,
-             access_token_enc = $2,
-             is_active        = true,
-             updated_at       = NOW()
-         WHERE id = $3`,
-        [REAL_SHOP, encryptedToken, GOOGLE_MERCHANT_ID]
-      );
-      return res.json({ status: 'activated_with_admin_token', shopDomain: REAL_SHOP, merchantId: GOOGLE_MERCHANT_ID });
-    }
-
-    // No token available at all — just update domain and flag
-    const result = await dbQuery(
-      `UPDATE merchants
-       SET shop_domain = $1,
-           is_active   = true,
-           updated_at  = NOW()
-       WHERE id = $2
-       RETURNING id, shop_domain, is_active, (access_token_enc != '' AND access_token_enc IS NOT NULL) as has_token`,
-      [REAL_SHOP, GOOGLE_MERCHANT_ID]
-    );
-    return res.json({ status: 'domain_updated_no_token', merchants: result.rows, note: 'No Shopify access token available. Set ADMIN_API_ACCESS_TOKEN in Render env vars or complete Shopify OAuth.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -197,78 +128,78 @@ m.post('/products/create', createProduct);
 m.post('/products/:productId/optimize', optimizeProduct);
 
 // Sync
-m.post('/sync',            triggerSync);
-m.get('/sync/:syncJobId',  getSyncStatus);
+m.post('/sync',           triggerSync);
+m.get('/sync/:syncJobId', getSyncStatus);
 
 // Analysis
-m.post('/analyze',              triggerAnalysis);
-m.get('/analysis/latest',       getLatestAnalysis);
+m.post('/analyze',        triggerAnalysis);
+m.get('/analysis/latest', getLatestAnalysis);
 
 // Fixes
-m.post('/fix',                          applyFix);
-m.get('/fixes',                         listFixes);
-m.get('/fix/:fixActionId',              getFixStatus);
-m.get('/fix/:fixActionId/preview',      previewFixAction);
+m.post('/fix',                     applyFix);
+m.get('/fixes',                    listFixes);
+m.get('/fix/:fixActionId',         getFixStatus);
+m.get('/fix/:fixActionId/preview', previewFixAction);
 
 // Health history
-m.get('/health-history',        getHealthHistory);
+m.get('/health-history', getHealthHistory);
 
 // AI features
 m.post('/ai/generate-descriptions', generateDescriptions);
 
 // Email campaigns
-m.get('/email/campaigns',              getEmailCampaigns);
-m.post('/email/campaigns',             createEmailCampaign);
-m.post('/email/ai-generate',           generateAiEmail);
-m.post('/email/ai-prompt-compose',     promptComposeEmail);
-m.post('/email/campaigns/:id/send',    sendEmailCampaign);
-m.get('/email/analytics',              getEmailAnalytics);
+m.get('/email/campaigns',           getEmailCampaigns);
+m.post('/email/campaigns',          createEmailCampaign);
+m.post('/email/ai-generate',        generateAiEmail);
+m.post('/email/ai-prompt-compose',  promptComposeEmail);
+m.post('/email/campaigns/:id/send', sendEmailCampaign);
+m.get('/email/analytics',           getEmailAnalytics);
 
 // Ads
-m.get('/ads/accounts',                 getAdsAccounts);
-m.post('/ads/connect/:platform',       connectAdAccount);
-m.delete('/ads/accounts/:id',          disconnectAdAccount);
-m.get('/ads/campaigns',                getAdsCampaigns);
-m.post('/ads/campaigns',               createAdsCampaign);
-m.post('/ads/campaigns/ai-generate',   aiGenerateCampaign);
-m.put('/ads/campaigns/:id',            updateAdsCampaign);
-m.post('/ads/campaigns/:id/pause',     pauseAdsCampaign);
-m.post('/ads/campaigns/:id/resume',    resumeAdsCampaign);
-m.get('/ads/performance',              getAdsPerformance);
-m.get('/ads/performance/trend',        getAdsPerformanceTrend);
-m.get('/ads/performance/:campaignId',  getCampaignPerformance);
-m.get('/ads/ai/suggestions',           getAdsSuggestions);
+m.get('/ads/accounts',                  getAdsAccounts);
+m.post('/ads/connect/:platform',        connectAdAccount);
+m.delete('/ads/accounts/:id',           disconnectAdAccount);
+m.get('/ads/campaigns',                 getAdsCampaigns);
+m.post('/ads/campaigns',                createAdsCampaign);
+m.post('/ads/campaigns/ai-generate',    aiGenerateCampaign);
+m.put('/ads/campaigns/:id',             updateAdsCampaign);
+m.post('/ads/campaigns/:id/pause',      pauseAdsCampaign);
+m.post('/ads/campaigns/:id/resume',     resumeAdsCampaign);
+m.get('/ads/performance',               getAdsPerformance);
+m.get('/ads/performance/trend',         getAdsPerformanceTrend);
+m.get('/ads/performance/:campaignId',   getCampaignPerformance);
+m.get('/ads/ai/suggestions',            getAdsSuggestions);
 m.post('/ads/ai/suggestions/:id/apply', applyAdsSuggestion);
-m.post('/ads/ai/budget-optimize',      aiBudgetOptimize);
-m.post('/ads/ai/audience-suggest',     aiAudienceSuggest);
-m.post('/ads/ai/creative-generate',    aiCreativeGenerate);
+m.post('/ads/ai/budget-optimize',       aiBudgetOptimize);
+m.post('/ads/ai/audience-suggest',      aiAudienceSuggest);
+m.post('/ads/ai/creative-generate',     aiCreativeGenerate);
 
 // SEO
-m.post('/seo/audit/run',               runSeoAudit);
-m.get('/seo/audit/latest',             getLatestSeoAudit);
-m.get('/seo/audit/history',            getSeoAuditHistory);
-m.get('/seo/issues',                   getSeoIssues);
-m.post('/seo/issues/:id/fix',          fixSeoIssue);
-m.post('/seo/issues/fix-all',          fixAllSeoIssues);
-m.get('/seo/products',                 getProductSeoScores);
-m.post('/seo/products/:id/optimize',   aiOptimizeProduct);
-m.post('/seo/products/optimize-all',   aiOptimizeAllProducts);
-m.get('/seo/products/:id/preview',     previewSeoChanges);
-m.get('/seo/meta-tags',                getMetaTags);
-m.put('/seo/meta-tags/bulk',           bulkUpdateMetaTags);
-m.post('/seo/meta-tags/ai-generate',   aiGenerateMetaTags);
-m.get('/seo/keywords',                 getSeoKeywords);
-m.post('/seo/keywords',                addSeoKeyword);
-m.delete('/seo/keywords/:id',          deleteSeoKeyword);
-m.get('/seo/keywords/rankings',        getKeywordRankings);
-m.post('/seo/keywords/suggest',        aiSuggestKeywords);
-m.get('/seo/schema',                   getSchemaMarkup);
-m.post('/seo/schema/generate',         generateSchemaMarkup);
-m.post('/seo/schema/apply',            applySchemaMarkup);
-m.get('/seo/pagespeed',                getPageSpeedScores);
-m.get('/seo/pagespeed/history',        getPageSpeedHistory);
-m.post('/seo/competitors',             addCompetitor);
-m.get('/seo/competitors/analyze',      analyzeCompetitors);
+m.post('/seo/audit/run',             runSeoAudit);
+m.get('/seo/audit/latest',           getLatestSeoAudit);
+m.get('/seo/audit/history',          getSeoAuditHistory);
+m.get('/seo/issues',                 getSeoIssues);
+m.post('/seo/issues/:id/fix',        fixSeoIssue);
+m.post('/seo/issues/fix-all',        fixAllSeoIssues);
+m.get('/seo/products',               getProductSeoScores);
+m.post('/seo/products/:id/optimize', aiOptimizeProduct);
+m.post('/seo/products/optimize-all', aiOptimizeAllProducts);
+m.get('/seo/products/:id/preview',   previewSeoChanges);
+m.get('/seo/meta-tags',              getMetaTags);
+m.put('/seo/meta-tags/bulk',         bulkUpdateMetaTags);
+m.post('/seo/meta-tags/ai-generate', aiGenerateMetaTags);
+m.get('/seo/keywords',               getSeoKeywords);
+m.post('/seo/keywords',              addSeoKeyword);
+m.delete('/seo/keywords/:id',        deleteSeoKeyword);
+m.get('/seo/keywords/rankings',      getKeywordRankings);
+m.post('/seo/keywords/suggest',      aiSuggestKeywords);
+m.get('/seo/schema',                 getSchemaMarkup);
+m.post('/seo/schema/generate',       generateSchemaMarkup);
+m.post('/seo/schema/apply',          applySchemaMarkup);
+m.get('/seo/pagespeed',              getPageSpeedScores);
+m.get('/seo/pagespeed/history',      getPageSpeedHistory);
+m.post('/seo/competitors',           addCompetitor);
+m.get('/seo/competitors/analyze',    analyzeCompetitors);
 
 router.use('/api/:shopDomain', m);
 
