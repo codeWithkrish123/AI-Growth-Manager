@@ -92,7 +92,31 @@ router.get('/api/auth/debug-merchant', async (req, res) => {
   }
 });
 
-// Store a Shopify access token directly (use when OAuth callback can't complete)
+// Store a Shopify access token directly via form or API
+router.get('/api/auth/set-shop-token', (req, res) => {
+  res.send(`
+    <html><body style="font-family:sans-serif;max-width:500px;margin:50px auto;padding:20px">
+    <h2>Set Shopify Token</h2>
+    <form method="POST" action="/api/auth/set-shop-token">
+      <p><label>Shop domain:<br><input name="shop" value="ai-product-optimizer.myshopify.com" style="width:100%;padding:8px"></label></p>
+      <p><label>Shopify access token (shpat_...):<br><input name="token" placeholder="shpat_xxxxx" style="width:100%;padding:8px"></label></p>
+      <p><label>Secret:<br><input name="secret" value="aigrowthmanager-secret-key-2024" style="width:100%;padding:8px"></label></p>
+      <button type="submit" style="padding:10px 20px;background:#2563eb;color:white;border:none;cursor:pointer">Save Token</button>
+    </form>
+    <hr>
+    <h3>How to get your Shopify token:</h3>
+    <ol>
+      <li>Go to <a href="https://ai-product-optimizer.myshopify.com/admin/settings/apps/development" target="_blank">Shopify Admin → Settings → Apps → Develop apps</a></li>
+      <li>Click your app (AI Growth Manager)</li>
+      <li>Click <strong>API credentials</strong> tab</li>
+      <li>Click <strong>Install app</strong> or <strong>Uninstall and reinstall</strong></li>
+      <li>Copy the <strong>Admin API access token</strong> (shown once)</li>
+      <li>Paste it above and click Save</li>
+    </ol>
+    </body></html>
+  `);
+});
+
 router.post('/api/auth/set-shop-token', async (req, res) => {
   try {
     const { shop, token, secret } = req.body;
