@@ -91,7 +91,10 @@ router.get('/api/auth/debug-merchant', async (req, res) => {
   }
 });
 
-// ── Set Shopify access token directly (bypasses OAuth when callback can't complete) ─
+// ── Shopify OAuth callback test — visit this URL to verify the route is reachable ─
+router.get('/api/auth/shopify/test', (req, res) => {
+  res.json({ status: 'callback route is reachable', app_url: process.env.APP_URL, query: req.query });
+});
 router.post('/api/auth/set-shop-token', async (req, res) => {
   try {
     const { shop, token, secret } = req.body;

@@ -117,8 +117,10 @@ export async function handleShopifyCallback(req, res) {
   try {
     const { code, hmac, shop, state } = req.query;
     
+    logger.info({ code: !!code, hmac: !!hmac, shop, state: !!state, query: req.query }, 'Shopify callback received');
+
     if (!code || !hmac || !shop) {
-      logger.warn({ code, hmac, shop }, 'Missing required OAuth parameters');
+      logger.warn({ code: !!code, hmac: !!hmac, shop }, 'Missing required OAuth parameters');
       return res.redirect(`${config.frontendUrl}/signin?error=missing_params`);
     }
 
