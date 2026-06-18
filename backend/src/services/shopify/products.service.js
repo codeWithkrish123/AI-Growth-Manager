@@ -45,6 +45,12 @@ export async function fetchProducts(shopDomain, accessToken, forceRefresh = fals
   `;
 
   try {
+    // Log token snippet for debugging 401s
+    logger.debug({ 
+        shopDomain, 
+        tokenSnippet: accessToken ? (accessToken.substring(0, 7) + '...') : 'MISSING'
+    }, 'Authenticating Shopify API client');
+
     const client = new shopify.clients.Graphql({
       session: { shop: shopDomain, accessToken },
     });
