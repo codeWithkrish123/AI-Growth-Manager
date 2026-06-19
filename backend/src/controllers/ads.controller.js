@@ -245,18 +245,20 @@ export async function getAdsPerformance(req, res) {
     return success(res, { summary: { impressions: 0, clicks: 0, spend: 0, revenue: 0, avg_roas: 0 }, trends: [] });
   }
 }
-    return error(res, err.message, 500);
-  }
-}
 
 export async function getCampaignPerformance(req, res) {
   try {
     const { campaignId } = req.params;
-    const result = await query('SELECT * FROM ad_performance WHERE campaign_id = $1 ORDER BY date DESC LIMIT 30', [campaignId]);
-    return success(res, result.rows);
+    try {
+      const result = await query('SELECT * FROM ad_performance WHERE campaign_id = $1 ORDER BY date DESC LIMIT 30', [campaignId]);
+      return success(res, result.rows || []);
+    } catch (dbErr) {
+      logger.warn({ err: dbErr.message }, 'Campaign performance query failed');
+      return success(res, []);
+    }
   } catch (err) {
     logger.error({ err }, 'Failed to get campaign performance');
-    return error(res, err.message, 500);
+    return success(res, []);
   }
 }
 
