@@ -195,10 +195,14 @@ export class Merchant {
       },
       
       getAccessToken: function() {
-        if (!this.accessTokenEnc) return null;
+        if (!this.accessTokenEnc || this.accessTokenEnc.trim().length === 0) {
+          return null;
+        }
         try {
-          return decrypt(this.accessTokenEnc);
-        } catch {
+          const decrypted = decrypt(this.accessTokenEnc);
+          return decrypted && decrypted.trim().length > 0 ? decrypted : null;
+        } catch (e) {
+          logger.warn({ error: e.message }, 'Token decryption failed');
           return null;
         }
       },
