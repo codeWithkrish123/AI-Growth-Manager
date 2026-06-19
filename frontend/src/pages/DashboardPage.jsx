@@ -141,7 +141,7 @@ export default function DashboardPage() {
       localStorage.setItem('currentShop', shop)
     }
 
-    const currentToken = urlToken || localStorage.getItem('token')
+    const currentToken = urlToken || localStorage.getItem('token') || localStorage.getItem('authToken')
     if (!currentToken) {
       console.warn('⚠️ No token found, redirecting to signin')
       navigate('/signin')
@@ -215,23 +215,34 @@ export default function DashboardPage() {
   const handleSync = async () => {
     try {
       setSyncing(true)
-      await dashboardAPI.triggerSync(shop)
+      const response = await dashboardAPI.triggerSync(shop)
       
       Swal.fire({
-        title: 'Sync Started',
-        text: 'Fetching latest data from Shopify. Refreshing dashboard...',
-        icon: 'info',
-        timer: 3000,
-        showConfirmButton: false,
+        title: 'Sync Complete',
+        text: `Store synced! Health Score: ${response.data?.healthScore || '--'}`,
+        icon: 'success',
+        confirmButtonColor: '#2563eb',
         background: isDark ? '#1e293b' : '#fff',
         color: isDark ? '#fff' : '#1e293b'
       })
 
-      setTimeout(() => { fetchAll(); setSyncing(false) }, 3000)
+      // Wait then fetch all data to show real-time updates
+      setTimeout(() => { 
+        fetchAll()
+        setSyncing(false) 
+      }, 1000)
     } catch (err) {
+      const errorMsg = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Sync failed';
+      
+      console.error('Sync error:', {
+        status: err.response?.status,
+        data: err.response?.data,
+        message: errorMsg
+      });
+      
       Swal.fire({
         title: 'Sync Failed',
-        text: 'Could not connect to Shopify. Please check your connection.',
+        text: errorMsg,
         icon: 'error',
         background: isDark ? '#1e293b' : '#fff',
         color: isDark ? '#fff' : '#1e293b'
@@ -590,4 +601,5 @@ export default function DashboardPage() {
     </div>
   )
 }
+
 

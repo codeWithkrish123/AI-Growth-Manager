@@ -46,7 +46,7 @@ export default function OnboardingPage() {
             }
             window.history.replaceState({}, document.title, '/onboarding')
         } else {
-            const existingToken = localStorage.getItem('token')
+            const existingToken = localStorage.getItem('token') || localStorage.getItem('authToken')
             const existingShop = localStorage.getItem('currentShop')
             // Only auto-redirect to dashboard if Shopify OAuth has been completed
             const shopifyConnected = localStorage.getItem('shopifyConnected') === 'true'
@@ -331,3 +331,4 @@ export default function OnboardingPage() {
         </div>
     )
 }
+

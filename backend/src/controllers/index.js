@@ -225,6 +225,7 @@ export async function triggerSync(req, res) {
       totalProducts,
       totalOrders,
       totalRevenue: totalRevenue.toFixed(2),
+      message: 'Store synced successfully'
     });
   } catch (err) {
     const shopDomain = req.merchant?.shopDomain;

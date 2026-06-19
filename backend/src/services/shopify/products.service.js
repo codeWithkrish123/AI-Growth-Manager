@@ -21,6 +21,11 @@ export async function fetchProducts(shopDomain, accessToken, forceRefresh = fals
     throw new ShopifyApiError(`Rate limit exceeded. ${remaining} requests remaining.`);
   }
 
+  if (!accessToken) {
+    logger.error({ shopDomain }, 'Access token missing for product fetch');
+    throw new ShopifyApiError('Access token required');
+  }
+
   const PRODUCTS_QUERY = `
     query getProducts($cursor: String) {
       products(first: 250, after: $cursor) {
@@ -46,10 +51,11 @@ export async function fetchProducts(shopDomain, accessToken, forceRefresh = fals
 
   try {
     // Log token snippet for debugging 401s
-    logger.debug({ 
+    logger.info({ 
         shopDomain, 
-        tokenSnippet: accessToken ? (accessToken.substring(0, 7) + '...') : 'MISSING'
-    }, 'Authenticating Shopify API client');
+        tokenSnippet: accessToken ? (accessToken.substring(0, 7) + '...') : 'MISSING',
+        tokenLength: accessToken?.length
+    }, 'Fetching products from Shopify');
 
     const client = new shopify.clients.Graphql({
       session: { shop: shopDomain, accessToken },
@@ -64,7 +70,10 @@ export async function fetchProducts(shopDomain, accessToken, forceRefresh = fals
       });
 
       const data = response.data?.products;
-      if (!data) break;
+      if (!data) {
+        logger.warn({ shopDomain }, 'No products data in response');
+        break;
+      }
 
       for (const { node } of data.edges) {
         allProducts.push({

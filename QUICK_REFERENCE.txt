@@ -1,0 +1,95 @@
+================================================================================
+                 AI GROWTH MANAGER - QA SESSION QUICK REFERENCE
+                              June 20, 2026
+================================================================================
+
+🎯 PROBLEM: Shopify Sync Fails
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+User clicks "Sync Now" → Generic error shown → All features blocked
+
+✅ SOLUTION DEPLOYED: Better Error Messages
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Now users see: "Token may be expired" (or specific error)
+Instead of: "Could not connect to Shopify"
+
+🚀 NEXT ACTION: Deploy & Observe Error
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Run: git push origin main
+2. Wait: 2-3 minutes for Vercel/Render
+3. Test: Click Sync Now
+4. Note: What specific error appears
+5. Fix: Based on error message
+
+📊 STATUS REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Sign-in        WORKING     ← Users can log in
+⚠️  Dashboard      PARTIAL     ← Loads but sync fails
+❌ Sync           BROKEN      ← Main issue (being debugged)
+❌ All Features   BLOCKED     ← Waiting for sync
+
+📋 FILES CHANGED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. backend/src/controllers/index.js (lines 56-78, 232-250)
+2. frontend/src/pages/DashboardPage.jsx (lines 215-242)
+
+Total: ~40 lines modified (improvements, no breaking changes)
+
+🚀 DEPLOYMENT (5 MINUTES)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+$ cd E:\AI\ Growth\ Manager
+$ git add backend/src/controllers/index.js frontend/src/pages/DashboardPage.jsx
+$ git commit -m "fix: improve sync error logging and display real errors"
+$ git push origin main
+
+✅ DONE! Auto-deploys to Vercel + Render
+
+📚 QUICK DOCUMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DEPLOY_TODAY.md                       ← Start here (5 min)
+IMMEDIATE_ACTION_PLAN.md              ← Problem + solution
+QA_EXECUTIVE_SUMMARY.md               ← For stakeholders
+QA_FINDINGS_AND_FIX_PLAN.md            ← For developers
+CODE_CHANGES_SUMMARY.md                ← Code details
+DEBUG_AND_FIX_GUIDE.md                 ← How to test locally
+QA_DOCUMENTS_INDEX.md                  ← Master index
+
+📞 WHAT TO DO AFTER DEPLOYMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Go to https://ai-growth-manager.vercel.app/
+2. Sign in: sahkrish1406@gmail.com / Newdelhi@2025
+3. Click "Sync Now"
+4. Read the specific error (not generic message!)
+5. Match error to fix plan
+6. Apply root cause fix
+
+🎯 SUCCESS CRITERIA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Users see specific error (not generic)
+✅ Backend logs show token status
+✅ Developers can debug
+✅ Root cause fix identified
+✅ Sync works after fix applied
+✅ All features have data
+
+⏱️  TIME ESTIMATES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Deploy improvements:         5 min
+Observe error:              5 min
+Identify root cause:       10 min
+Apply fix:                30-60 min
+Verify all features:       30 min
+─────────────────────────────────────
+Total to production ready:  1-2 hours
+
+💡 KEY INSIGHT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+One issue blocks everything.
+Fix that one issue → Everything works.
+Today's deployment makes that issue VISIBLE.
+Next step: FIX THE VISIBLE ISSUE.
+
+================================================================================
+                          READY TO DEPLOY? ✅
+                    Run: git push origin main
+                    Then test and observe error
+================================================================================

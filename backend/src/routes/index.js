@@ -39,6 +39,7 @@ import {
 } from '../controllers/seo.controller.js';
 import { createProduct, optimizeProduct } from '../controllers/products.controller.js';
 import googleRoutes from './google.routes.js';
+import metaRoutes from './meta-ads.routes.js';
 
 const router = Router();
 
@@ -49,7 +50,8 @@ router.get('/', handleEmbeddedAppLaunch);
 router.get('/auth/shopify',    authBegin);
 router.get('/auth/callback',   authCallback);
 router.post('/auth/oauth-url', getOAuthUrl);
-router.use('/auth/google',     googleRoutes);
+router.use('/auth/google', googleRoutes);
+router.use('/auth/meta', metaRoutes);
 
 // ── Shopify OAuth (public) ─────────────────────────────────────────────────────
 router.post('/api/auth/shopify/initiate', rateLimiter, initiateShopifyAuth);
@@ -67,21 +69,31 @@ router.get('/setup/debug', async (_req, res) => {
       `SELECT id, shop_domain, is_active,
               (access_token_enc IS NOT NULL AND access_token_enc != '') as has_token,
               length(access_token_enc) as token_length,
-              shop_info, updated_at
-       FROM merchants ORDER BY updated_at DESC LIMIT 5`
+              shop_info, updated_at, last_sync_at
+       FROM merchants ORDER BY updated_at DESC LIMIT 10`
     );
     const merchants = result.rows.map(m => {
       let decrypted_preview = null;
       let decrypt_error = null;
       try {
         const dec = decrypt(m.access_token_enc || '');
-        decrypted_preview = dec ? dec.substring(0, 10) + '... len=' + dec.length : 'empty';
+        decrypted_preview = dec ? dec.substring(0, 15) + '... len=' + dec.length : 'empty';
       } catch (e) {
         decrypt_error = e.message;
       }
-      return { ...m, decrypted_preview, decrypt_error };
+      return { 
+        ...m, 
+        decrypted_preview, 
+        decrypt_error,
+        shop_info: m.shop_info ? JSON.parse(m.shop_info).email : 'N/A'
+      };
     });
-    res.json({ merchants, app_url: process.env.APP_URL, encryption_key_length: (process.env.ENCRYPTION_KEY || '').length });
+    res.json({ 
+      merchants, 
+      app_url: process.env.APP_URL, 
+      encryption_key_set: !!process.env.ENCRYPTION_KEY,
+      backend_url: process.env.BACKEND_URL
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

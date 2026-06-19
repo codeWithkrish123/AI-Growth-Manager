@@ -7,7 +7,7 @@ import {
   Facebook, Globe, Lightbulb, FlaskConical, Users, CheckCircle2, AlertCircle, Trash2, Type
 } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
-import { dashboardAPI } from '../services/api'
+import { dashboardAPI, metaAPI } from '../services/api'
 import Swal from 'sweetalert2'
 
 export default function AdsPage() {

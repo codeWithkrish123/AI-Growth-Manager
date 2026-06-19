@@ -18,7 +18,7 @@ export default function StoreAccessPage() {
     const handleAuthorize = async () => {
         setIsVerifying(true)
         try {
-            const token = localStorage.getItem('token')
+            const token = localStorage.getItem('token') || localStorage.getItem('authToken')
             const baseUrl = BACKEND_URL || ''
 
             // Step 1: Try direct activation — if the merchant already has a Shopify
@@ -144,3 +144,4 @@ export default function StoreAccessPage() {
         </div>
     )
 }
+
