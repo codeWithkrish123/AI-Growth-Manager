@@ -216,10 +216,40 @@ export default function DashboardPage() {
     try {
       setSyncing(true)
       const response = await dashboardAPI.triggerSync(shop)
+      const data = response.data
       
       Swal.fire({
-        title: 'Sync Complete',
-        text: `Store synced! Health Score: ${response.data?.healthScore || '--'}`,
+        title: '✨ Sync Complete',
+        html: `
+          <div style="text-align: left; font-size: 14px; line-height: 1.8;">
+            <div style="font-size: 24px; font-weight: bold; color: #2563eb; margin-bottom: 12px;">
+              Health Score: ${data?.healthScore || '--'}/100
+            </div>
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; margin-bottom: 12px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                  <div style="color: #64748b; font-size: 12px;">Total Products</div>
+                  <div style="font-weight: bold; color: #1e293b; font-size: 16px;">${data?.totalProducts || 0}</div>
+                </div>
+                <div>
+                  <div style="color: #64748b; font-size: 12px;">Total Orders</div>
+                  <div style="font-weight: bold; color: #1e293b; font-size: 16px;">${data?.totalOrders || 0}</div>
+                </div>
+                <div>
+                  <div style="color: #64748b; font-size: 12px;">Revenue (30d)</div>
+                  <div style="font-weight: bold; color: #1e293b; font-size: 16px;">$${parseFloat(data?.totalRevenue || 0).toFixed(2)}</div>
+                </div>
+                <div>
+                  <div style="color: #64748b; font-size: 12px;">Status</div>
+                  <div style="font-weight: bold; color: #22c55e; font-size: 16px;">✓ Synced</div>
+                </div>
+              </div>
+            </div>
+            <div style="font-size: 12px; color: #64748b;">
+              ${data?.message || 'Your store data is now up to date'}
+            </div>
+          </div>
+        `,
         icon: 'success',
         confirmButtonColor: '#2563eb',
         background: isDark ? '#1e293b' : '#fff',
@@ -233,6 +263,7 @@ export default function DashboardPage() {
       }, 1000)
     } catch (err) {
       const errorMsg = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Sync failed';
+      const errorDetails = err.response?.data?.details || '';
       
       console.error('Sync error:', {
         status: err.response?.status,
@@ -241,11 +272,19 @@ export default function DashboardPage() {
       });
       
       Swal.fire({
-        title: 'Sync Failed',
-        text: errorMsg,
+        title: '⚠️ Sync Failed',
+        html: `
+          <div style="text-align: left; font-size: 14px;">
+            <div style="color: #1e293b; margin-bottom: 8px;">
+              ${errorMsg}
+            </div>
+            ${errorDetails ? `<div style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 8px; border-radius: 4px;">${errorDetails}</div>` : ''}
+          </div>
+        `,
         icon: 'error',
         background: isDark ? '#1e293b' : '#fff',
-        color: isDark ? '#fff' : '#1e293b'
+        color: isDark ? '#fff' : '#1e293b',
+        confirmButtonColor: '#ef4444'
       })
       setSyncing(false)
     }
