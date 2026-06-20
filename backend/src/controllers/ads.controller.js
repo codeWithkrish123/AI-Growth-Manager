@@ -47,9 +47,8 @@ export async function getAdsCampaigns(req, res) {
 export async function createAdsCampaign(req, res) {
   try {
     const { merchant } = req;
-    const { name } = req.body;
-    if (!name) return error(res, 'Campaign name is required', 400);
-    return success(res, { message: 'Campaign created', id: Math.random() });
+    const { name = 'New Campaign' } = req.body;
+    return success(res, { message: 'Campaign created', id: Math.random(), name });
   } catch (err) {
     logger.error({ err }, 'Failed to create campaign');
     return error(res, err.message, 500);
