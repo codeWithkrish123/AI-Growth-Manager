@@ -114,9 +114,9 @@ export async function fixSeoIssue(req, res) {
     };
 
     const fixAction = await FixAction.create({
-      merchant_id: merchant.id,
-      shop_domain: merchant.shopDomain,
-      fix_type: 'update_seo',
+      merchantId: merchant.id,
+      shopDomain: merchant.shopDomain,
+      fixType: 'update_seo',
       status: 'pending',
       payload: fixPayload,
     });
@@ -163,9 +163,9 @@ export async function fixAllSeoIssues(req, res) {
     };
 
     const fixAction = await FixAction.create({
-      merchant_id: merchant.id,
-      shop_domain: merchant.shopDomain,
-      fix_type: 'update_seo',
+      merchantId: merchant.id,
+      shopDomain: merchant.shopDomain,
+      fixType: 'update_seo',
       status: 'pending',
       payload: fixPayload,
     });

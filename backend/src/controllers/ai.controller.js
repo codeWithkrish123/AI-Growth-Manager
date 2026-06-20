@@ -145,9 +145,9 @@ export async function applyPrice(req, res) {
     };
 
     const fixAction = await FixAction.create({
-      merchant_id: merchant.id,
-      shop_domain: merchant.shopDomain,
-      fix_type: 'update_price',
+      merchantId: merchant.id,
+      shopDomain: merchant.shopDomain,
+      fixType: 'update_price',
       status: 'pending',
       payload: fixPayload,
     });
