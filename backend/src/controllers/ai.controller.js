@@ -7,6 +7,8 @@ import {
 } from '../services/shopify/ai/description.generator.js';
 import { analyzePricing, suggestPriceWithAI } from '../services/shopify/ai/price.optimizer.js';
 import { shopifyCache } from '../utils/cache.js';
+import { FixAction } from '../models/index.js';
+import { executeFix } from '../services/shopify/metrics/fix.executor.js';
 
 /**
  * POST /api/:shopDomain/ai/generate-descriptions
@@ -108,5 +110,62 @@ export async function optimizePrices(req, res) {
   } catch (err) {
     logger.error({ err }, 'Price optimization failed');
     return error(res, 'Price optimization failed: ' + err.message, 500);
+  }
+}
+
+
+/**
+ * POST /api/:shopDomain/ai/apply-price
+ * Apply a suggested price to a product
+ */
+export async function applyPrice(req, res) {
+  try {
+    const { merchant } = req;
+    const { productId, suggestedPrice } = req.body;
+
+    if (!productId || !suggestedPrice) {
+      return error(res, 'productId and suggestedPrice are required', 400);
+    }
+
+    const accessToken = merchant.getAccessToken() || process.env.ADMIN_API_ACCESS_TOKEN;
+    if (!accessToken) {
+      return error(res, 'No access token. Please reconnect your store.', 400);
+    }
+
+    // Create a FixAction to update the product price
+    const fixPayload = {
+      product: {
+        id: productId,
+        variants: [
+          {
+            price: suggestedPrice.toString(),
+          },
+        ],
+      },
+    };
+
+    const fixAction = await FixAction.create({
+      merchant_id: merchant.id,
+      shop_domain: merchant.shopDomain,
+      fix_type: 'update_price',
+      status: 'pending',
+      payload: fixPayload,
+    });
+
+    try {
+      const result = await executeFix(fixAction.id, accessToken);
+      return success(res, {
+        applied: true,
+        message: 'Price has been updated on Shopify',
+        fixAction: result,
+      });
+    } catch (fixErr) {
+      logger.error({ err: fixErr }, 'Price application failed');
+      return error(res, 'Failed to apply price: ' + fixErr.message, 500);
+    }
+
+  } catch (err) {
+    logger.error({ err }, 'Failed to apply price');
+    return error(res, 'Apply price failed: ' + err.message, 500);
   }
 }

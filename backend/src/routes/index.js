@@ -18,7 +18,7 @@ import {
   generateAiEmail, promptComposeEmail,
   sendEmailCampaign, getEmailAnalytics,
 } from '../controllers/email.controller.js';
-import { generateDescriptions, optimizePrices } from '../controllers/ai.controller.js';
+import { generateDescriptions, optimizePrices, applyPrice } from '../controllers/ai.controller.js';
 import {
   getAdsAccounts, connectAdAccount, disconnectAdAccount,
   getAdsCampaigns, createAdsCampaign, updateAdsCampaign,
@@ -158,6 +158,7 @@ m.get('/fix/:fixActionId/preview', previewFixAction);
 m.get('/health-history',   getHealthHistory);
 m.post('/ai/generate-descriptions', generateDescriptions);
 m.post('/ai/optimize-prices',     optimizePrices);
+m.post('/ai/apply-price',         applyPrice);
 m.get('/email/campaigns',           getEmailCampaigns);
 m.post('/email/campaigns',          createEmailCampaign);
 m.post('/email/ai-generate',        generateAiEmail);

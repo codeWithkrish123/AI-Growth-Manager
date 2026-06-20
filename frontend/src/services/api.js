@@ -89,6 +89,7 @@ export const dashboardAPI = {
   generateDescriptions:(shop, data = {})   => api.post(`${s(shop)}/ai/generate-descriptions`, data),
   previewDescriptions: (shop)              => api.post(`${s(shop)}/ai/generate-descriptions`, { preview: true }),
   optimizePrices:      (shop, data = {})   => api.post(`${s(shop)}/ai/optimize-prices`, data),
+  applyPrice:          (shop, data)        => api.post(`${s(shop)}/ai/apply-price`, data),
   optimizeProduct:     (shop, productId)   => api.post(`${s(shop)}/products/${productId}/optimize`),
   // Ads
   getAdsAccounts:      (shop)              => api.get(`${s(shop)}/ads/accounts`),

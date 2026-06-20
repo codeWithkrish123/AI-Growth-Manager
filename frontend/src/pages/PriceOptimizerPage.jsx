@@ -26,6 +26,7 @@ export default function PriceOptimizerPage() {
   const [summary,     setSummary]     = useState(null)
   const [status,      setStatus]      = useState('idle')  // idle|loading|done|error
   const [error,       setError]       = useState(null)
+  const [applying,    setApplying]    = useState(null)  // Track which product is being applied
 
   // Single product AI suggestion
   const [aiMode,     setAiMode]     = useState(false)
@@ -101,6 +102,39 @@ export default function PriceOptimizerPage() {
       });
     } finally {
       setAiLoading(false)
+    }
+  }
+
+  const handleApplyPrice = async (suggestion) => {
+    try {
+      setApplying(suggestion.productId)
+      await dashboardAPI.applyPrice(shop, {
+        productId: suggestion.productId,
+        suggestedPrice: suggestion.suggestedPrice
+      })
+      
+      Swal.fire({
+        title: 'Price Updated',
+        text: `Price has been updated to ₹${suggestion.suggestedPrice?.toLocaleString()} on Shopify.`,
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false,
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+      
+      // Refresh suggestions after applying
+      runBulkAnalysis()
+    } catch (e) {
+      Swal.fire({
+        title: 'Application Failed',
+        text: errMsg(e, 'Could not apply price to product'),
+        icon: 'error',
+        background: isDark ? '#1e293b' : '#fff',
+        color: isDark ? '#fff' : '#1e293b'
+      })
+    } finally {
+      setApplying(null)
     }
   }
 
@@ -369,11 +403,24 @@ export default function PriceOptimizerPage() {
                         </div>
                       </div>
                       {s.potentialRevenue > 0 && (
-                        <div className="mt-3 pt-3 border-t flex items-center gap-2" style={{ borderColor: 'var(--c-border)' }}>
-                          <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                          <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-                            Estimated +₹{s.potentialRevenue?.toLocaleString()} potential revenue
-                          </p>
+                        <div className="mt-3 pt-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--c-border)' }}>
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                              Estimated +₹{s.potentialRevenue?.toLocaleString()} potential revenue
+                            </p>
+                          </div>
+                          <button 
+                            onClick={() => handleApplyPrice(s)} 
+                            disabled={applying === s.productId}
+                            className="btn-primary text-xs"
+                          >
+                            {applying === s.productId ? (
+                              <><Loader2 className="w-3 h-3 animate-spin" /> Applying...</>
+                            ) : (
+                              <>Apply Price →</>
+                            )}
+                          </button>
                         </div>
                       )}
                     </motion.div>
