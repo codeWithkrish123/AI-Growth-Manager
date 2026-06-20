@@ -76,7 +76,7 @@ export async function fixSeoIssue(req, res) {
   try {
     const { merchant } = req;
     const { id } = req.params;
-
+    // Force redeploy
     const accessToken = merchant.getAccessToken() || process.env.ADMIN_API_ACCESS_TOKEN;
     if (!accessToken) return error(res, 'No access token. Please reconnect your store.', 400);
 
