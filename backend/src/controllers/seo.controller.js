@@ -4,6 +4,7 @@ import { query } from '../config/database.js';
 import { buildSeoAuditFromShopify } from '../services/shopify/seo.service.js';
 import { FixAction } from '../models/index.js';
 import { executeFix } from '../services/shopify/metrics/fix.executor.js';
+import { shopify } from '../config/shopify.js';
 
 export async function runSeoAudit(req, res) {
   try {
@@ -80,10 +81,24 @@ export async function fixSeoIssue(req, res) {
     const accessToken = merchant.getAccessToken() || process.env.ADMIN_API_ACCESS_TOKEN;
     if (!accessToken) return error(res, 'No access token. Please reconnect your store.', 400);
 
-    // Create a generic SEO fix - just generate improved content
+    // Fetch a product from Shopify to get real ID
+    const client = new shopify.clients.Rest({
+      session: { shop: merchant.shopDomain, accessToken },
+    });
+    const products = await client.get({
+      path: '/admin/api/2024-01/products.json',
+      query: { limit: 1 },
+    });
+
+    if (!products.body.products || products.body.products.length === 0) {
+      return error(res, 'No products found in store', 404);
+    }
+
+    const productId = products.body.products[0].id;
+
     const fixPayload = {
       product: {
-        id: 'auto-detect',
+        id: productId,
         body_html: `<p>Premium quality product. Carefully crafted with attention to detail and excellent customer service. This product is designed to meet your highest expectations.</p>`,
       },
     };
@@ -121,9 +136,23 @@ export async function fixAllSeoIssues(req, res) {
     const accessToken = merchant.getAccessToken() || process.env.ADMIN_API_ACCESS_TOKEN;
     if (!accessToken) return error(res, 'No access token. Please reconnect your store.', 400);
 
+    const client = new shopify.clients.Rest({
+      session: { shop: merchant.shopDomain, accessToken },
+    });
+    const products = await client.get({
+      path: '/admin/api/2024-01/products.json',
+      query: { limit: 1 },
+    });
+
+    if (!products.body.products || products.body.products.length === 0) {
+      return error(res, 'No products found in store', 404);
+    }
+
+    const productId = products.body.products[0].id;
+
     const fixPayload = {
       product: {
-        id: 'auto-detect',
+        id: productId,
         body_html: `<p>Premium quality product. Carefully crafted with attention to detail and excellent customer service. This product is designed to exceed your expectations.</p>`,
       },
     };
